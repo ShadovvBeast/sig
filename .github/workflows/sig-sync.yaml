@@ -22,8 +22,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
+      - name: Setup Sig  # [sig] Use our own setup-sig action
+        uses: ./tools/setup-sig
         with:
           version: master
 

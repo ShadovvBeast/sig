@@ -1,0 +1,134 @@
+# [sig] setup-sig — Install the Sig compiler in GitHub/Forgejo Actions workflows
+name: 'Setup Sig'
+description: 'Download and install the Sig compiler for use in CI workflows'
+branding:
+  icon: 'zap'
+  color: 'orange'
+
+inputs:
+  version:
+    description: >
+      Sig version to install. Examples: "0.0.1", "master", "latest".
+      If omitted, auto-detects from build.sig.zon or build.zig.zon minimum_zig_version,
+      falling back to "latest".
+    required: false
+    default: ''
+  mirror:
+    description: 'Custom mirror base URL for downloading Sig tarballs'
+    required: false
+    default: ''
+  use-cache:
+    description: 'Cache the downloaded compiler tarball between runs'
+    required: false
+    default: 'true'
+  cache-key:
+    description: 'Additional cache key suffix for matrix strategy disambiguation'
+    required: false
+    default: ''
+  cache-size-limit:
+    description: 'Maximum Zig global cache size in MiB before clearing (0 to disable)'
+    required: false
+    default: '2048'
+
+runs:
+  using: 'composite'
+  steps:
+    # --- Resolve version and platform ---
+    - name: Resolve version and platform (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      id: resolve-unix
+      run: |
+        chmod +x "${{ github.action_path }}/scripts/setup.sh"
+        "${{ github.action_path }}/scripts/setup.sh" resolve \
+          "${{ inputs.version }}" "${{ inputs.mirror }}"
+      # Outputs: resolved-version, download-url, platform-triple
+
+    - name: Resolve version and platform (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      id: resolve-win
+      run: |
+        & "${{ github.action_path }}/scripts/setup.ps1" -Action resolve `
+          -Version "${{ inputs.version }}" -Mirror "${{ inputs.mirror }}"
+
+    # --- Cache compiler tarball ---
+    - name: Cache Sig compiler
+      if: inputs.use-cache == 'true'
+      uses: actions/cache@v4
+      id: compiler-cache
+      with:
+        path: ${{ runner.tool_cache }}/sig
+        key: sig-compiler-${{ steps.resolve-unix.outputs.resolved-version || steps.resolve-win.outputs.resolved-version }}-${{ runner.os }}-${{ runner.arch }}${{ inputs.cache-key && format('-{0}', inputs.cache-key) || '' }}
+
+    # --- Download, verify, and install (Linux/macOS) ---
+    - name: Install Sig compiler (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        "${{ github.action_path }}/scripts/setup.sh" install \
+          "${{ steps.resolve-unix.outputs.resolved-version }}" \
+          "${{ steps.resolve-unix.outputs.download-url }}" \
+          "${{ runner.tool_cache }}/sig" \
+          "${{ steps.compiler-cache.outputs.cache-hit }}"
+
+    # --- Download, verify, and install (Windows) ---
+    - name: Install Sig compiler (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}/scripts/setup.ps1" -Action install `
+          -Version "${{ steps.resolve-win.outputs.resolved-version }}" `
+          -DownloadUrl "${{ steps.resolve-win.outputs.download-url }}" `
+          -ToolDir "${{ runner.tool_cache }}/sig" `
+          -CacheHit "${{ steps.compiler-cache.outputs.cache-hit }}"
+
+    # --- Add to PATH ---
+    - name: Add Sig to PATH (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: echo "${{ runner.tool_cache }}/sig/bin" >> "$GITHUB_PATH"
+
+    - name: Add Sig to PATH (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: echo "${{ runner.tool_cache }}\sig\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+    # --- Cache Zig global cache directory ---
+    - name: Cache Zig global cache
+      if: inputs.use-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/zig
+          ~/Library/Caches/zig
+          ~\AppData\Local\zig
+        key: sig-zig-cache-${{ runner.os }}-${{ runner.arch }}${{ inputs.cache-key && format('-{0}', inputs.cache-key) || '' }}-${{ github.run_id }}
+        restore-keys: |
+          sig-zig-cache-${{ runner.os }}-${{ runner.arch }}${{ inputs.cache-key && format('-{0}', inputs.cache-key) || '' }}-
+
+    # --- Enforce cache size limit ---
+    - name: Enforce Zig cache size limit (Linux/macOS)
+      if: runner.os != 'Windows' && inputs.cache-size-limit != '0'
+      shell: bash
+      run: |
+        "${{ github.action_path }}/scripts/setup.sh" cache-limit \
+          "${{ inputs.cache-size-limit }}"
+
+    - name: Enforce Zig cache size limit (Windows)
+      if: runner.os == 'Windows' && inputs.cache-size-limit != '0'
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}/scripts/setup.ps1" -Action cache-limit `
+          -CacheSizeLimit "${{ inputs.cache-size-limit }}"
+
+    # --- Verify installation ---
+    - name: Verify Sig installation
+      shell: bash
+      if: runner.os != 'Windows'
+      run: zig version
+
+    - name: Verify Sig installation (Windows)
+      shell: pwsh
+      if: runner.os == 'Windows'
+      run: zig version

@@ -1,0 +1,141 @@
+# [sig] Build and publish Sig compiler releases
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 0.0.1)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-linux
+            os: ubuntu-latest
+            ext: tar.xz
+          - target: aarch64-linux
+            os: ubuntu-latest
+            ext: tar.xz
+          - target: aarch64-macos
+            os: macos-latest
+            ext: tar.xz
+          - target: x86_64-windows
+            os: windows-latest
+            ext: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Zig (bootstrap compiler)
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+
+      - name: Build release binary
+        shell: bash
+        run: |
+          TARGET="${{ matrix.target }}"
+          # Map matrix target to zig target triple
+          case "$TARGET" in
+            x86_64-linux)    ZIG_TARGET="x86_64-linux-musl" ;;
+            aarch64-linux)   ZIG_TARGET="aarch64-linux-musl" ;;
+            aarch64-macos)   ZIG_TARGET="aarch64-macos" ;;
+            x86_64-windows)  ZIG_TARGET="x86_64-windows" ;;
+          esac
+
+          echo "Building for ${ZIG_TARGET}..."
+          zig build \
+            -Dtarget="${ZIG_TARGET}" \
+            -Doptimize=ReleaseSafe \
+            --prefix "sig-${VERSION}-${TARGET}"
+
+      - name: Package tarball (Linux/macOS)
+        if: matrix.ext == 'tar.xz'
+        shell: bash
+        run: |
+          ARCHIVE="sig-${VERSION}-${{ matrix.target }}.tar.xz"
+          tar -cJf "${ARCHIVE}" "sig-${VERSION}-${{ matrix.target }}"
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Package zip (Windows)
+        if: matrix.ext == 'zip'
+        shell: pwsh
+        run: |
+          $archive = "sig-${env:VERSION}-${{ matrix.target }}.zip"
+          Compress-Archive -Path "sig-${env:VERSION}-${{ matrix.target }}" -DestinationPath $archive
+          "ARCHIVE=$archive" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+
+      - name: Generate checksum
+        shell: bash
+        run: |
+          if command -v sha256sum &>/dev/null; then
+            sha256sum "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
+          else
+            shasum -a 256 "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sig-${{ matrix.target }}
+          path: |
+            ${{ env.ARCHIVE }}
+            ${{ env.ARCHIVE }}.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Combine checksums
+        run: |
+          cd artifacts
+          cat *.sha256 > sha256sums.txt
+          echo "=== sha256sums.txt ==="
+          cat sha256sums.txt
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd artifacts
+          gh release create "v${VERSION}" \
+            --title "Sig v${VERSION}" \
+            --notes "Sig v${VERSION} — Strict Zig compiler release.
+
+          ## Downloads
+
+          | Platform | Archive |
+          |---|---|
+          | Linux x86_64 | \`sig-${VERSION}-x86_64-linux.tar.xz\` |
+          | Linux aarch64 | \`sig-${VERSION}-aarch64-linux.tar.xz\` |
+          | macOS aarch64 | \`sig-${VERSION}-aarch64-macos.tar.xz\` |
+          | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
+
+          Checksums are in \`sha256sums.txt\`." \
+            ${{ inputs.prerelease && '--prerelease' || '' }} \
+            sig-*.tar.xz sig-*.zip sha256sums.txt
