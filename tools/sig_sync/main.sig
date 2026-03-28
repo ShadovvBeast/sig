@@ -157,7 +157,7 @@ pub fn parseManifest(json_bytes: []const u8) SyncManifest {
 
 // ── Manifest Serialization (using sig.json.Writer, zero allocators) ──────
 
-pub fn serializeManifest(manifest: *const SyncManifest, buf: []u8) SigError![]u8 {
+pub fn serializeManifest(manifest: *const SyncManifest, buf: []u8) SigError![]const u8 {
     var w = sig_json.Writer.init(buf);
 
     try w.beginObject();
