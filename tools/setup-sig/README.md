@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ShadovvBeast/setup-sig@v1
-      - run: zig build test
+      - run: sig build test
 ```
 
 ### Pin a specific version
@@ -40,7 +40,7 @@ jobs:
       - uses: ShadovvBeast/setup-sig@v1
         with:
           cache-key: ${{ matrix.os }}
-      - run: zig build test
+      - run: sig build test
 ```
 
 ### Custom mirror
@@ -59,7 +59,7 @@ jobs:
 | `mirror` | *(GitHub releases)* | Custom mirror base URL for downloading tarballs |
 | `use-cache` | `true` | Cache the compiler tarball between workflow runs |
 | `cache-key` | `""` | Additional cache key suffix for matrix disambiguation |
-| `cache-size-limit` | `2048` | Max Zig global cache size in MiB before clearing (`0` to disable) |
+| `cache-size-limit` | `2048` | Max Sig global cache size in MiB before clearing (`0` to disable) |
 
 ## Supported platforms
 
@@ -76,8 +76,8 @@ jobs:
 2. Downloads the platform-appropriate tarball from GitHub releases (or a custom mirror)
 3. Verifies the SHA-256 checksum against `sha256sums.txt`
 4. Extracts the compiler and adds it to `PATH`
-5. Caches the tarball and Zig global cache directory for faster subsequent runs
-6. Enforces a configurable size limit on the Zig cache directory
+5. Caches the tarball and Sig global cache directory for faster subsequent runs
+6. Enforces a configurable size limit on the Sig cache directory
 
 ## License
 

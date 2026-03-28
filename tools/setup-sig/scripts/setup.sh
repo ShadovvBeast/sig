@@ -92,7 +92,7 @@ action_resolve() {
 action_install() {
   local version="$2" url="$3" tool_dir="$4" cache_hit="${5:-false}"
 
-  if [ "$cache_hit" = "true" ] && [ -x "${tool_dir}/bin/zig" ]; then
+  if [ "$cache_hit" = "true" ] && [ -x "${tool_dir}/bin/sig" ]; then
     echo "Sig ${version} restored from cache"
     return 0
   fi

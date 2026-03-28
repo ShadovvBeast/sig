@@ -54,7 +54,7 @@ jobs:
       - name: Build and run sig-sync
         if: steps.check.outputs.skip != 'true'
         run: |
-          zig build run-sig-sync -- --remote upstream-zig --branch master
+          sig build run-sig-sync -- --remote upstream-zig --branch master
         timeout-minutes: 30
 
       - name: Push to GitHub (ShadovvBeast/sig master)
@@ -80,7 +80,7 @@ jobs:
       - name: Regenerate README
         if: steps.check.outputs.skip != 'true'
         run: |
-          zig build run-sig-readme || true
+          sig build run-sig-readme || true
           if git diff --quiet README.md tools/sig_sync/manifest.json; then
             echo "README unchanged"
           else

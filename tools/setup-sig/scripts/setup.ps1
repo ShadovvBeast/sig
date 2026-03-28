@@ -84,7 +84,7 @@ function Invoke-Resolve {
 }
 
 function Invoke-Install {
-    if ($CacheHit -eq 'true' -and (Test-Path (Join-Path $ToolDir 'bin/zig.exe'))) {
+    if ($CacheHit -eq 'true' -and (Test-Path (Join-Path $ToolDir 'bin/sig'))) {
         Write-Output "Sig ${Version} restored from cache"
         return
     }

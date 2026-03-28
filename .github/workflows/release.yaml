@@ -90,7 +90,7 @@ jobs:
           esac
 
           echo "Building for ${ZIG_TARGET}..."
-          zig build \
+          sig build \
             -Dtarget="${ZIG_TARGET}" \
             -Doptimize=ReleaseSafe \
             --prefix "sig-${VERSION}-${TARGET}" \
