@@ -1029,6 +1029,7 @@ fn netBindIp(
     var storage: Io.Threaded.PosixAddress = undefined;
     var addr_len = Io.Threaded.addressToPosix(address, &storage);
     try posixBind(k, socket_fd, &storage.any, addr_len);
+    if (options.allow_broadcast) try setSocketOption(k, socket_fd, posix.SOL.SOCKET, posix.SO.BROADCAST, 1);
     try posixGetSockName(k, socket_fd, &storage.any, &addr_len);
     return .{ .handle = socket_fd, .address = Io.Threaded.addressFromPosix(&storage) };
 }

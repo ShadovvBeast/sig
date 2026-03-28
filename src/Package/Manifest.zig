@@ -421,12 +421,10 @@ const Parse = struct {
         const ast = p.ast;
         const tok = ast.nodeMainToken(node);
         const h = try parseString(p, node);
-
-        if (h.len > Package.Hash.max_len) {
-            return fail(p, tok, "hash length exceeds maximum: {d}", .{h.len});
+        switch (Package.Hash.validate(h)) {
+            .ok => return h,
+            else => |t| return fail(p, tok, "invalid hash: {t}", .{t}),
         }
-
-        return h;
     }
 
     /// TODO: try to DRY this with AstGen.identifierTokenString
@@ -633,7 +631,7 @@ test "basic" {
         \\    .dependencies = .{
         \\        .bar = .{
         \\            .url = "https://example.com/baz.tar.gz",
-        \\            .hash = "1220f1b680b6065fcfc94fe777f22e73bcb7e2767e5f4d99d4255fe76ded69c7a35f",
+        \\            .hash = "libmp3lame-3.100.1-6-67wlF_KvEwDRCT3pTpcDzi5KGntWCEoM-WtvVPEWdlk5",
         \\        },
         \\    },
         \\}
@@ -665,7 +663,7 @@ test "basic" {
         manifest.dependencies.values()[0].location.url,
     );
     try testing.expectEqualStrings(
-        "1220f1b680b6065fcfc94fe777f22e73bcb7e2767e5f4d99d4255fe76ded69c7a35f",
+        "libmp3lame-3.100.1-6-67wlF_KvEwDRCT3pTpcDzi5KGntWCEoM-WtvVPEWdlk5",
         manifest.dependencies.values()[0].hash orelse return error.TestFailed,
     );
 

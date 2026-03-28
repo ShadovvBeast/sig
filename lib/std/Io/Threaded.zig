@@ -4217,7 +4217,7 @@ fn dirCreateFilePosix(
     userdata: ?*anyopaque,
     dir: Dir,
     sub_path: []const u8,
-    flags: File.CreateFlags,
+    options: Dir.CreateFileOptions,
 ) File.OpenError!File {
     const t: *Threaded = @ptrCast(@alignCast(userdata));
     _ = t;
@@ -4225,34 +4225,35 @@ fn dirCreateFilePosix(
     var path_buffer: [posix.PATH_MAX]u8 = undefined;
     const sub_path_posix = try pathToPosix(sub_path, &path_buffer);
 
-    var os_flags: posix.O = .{
-        .ACCMODE = if (flags.read) .RDWR else .WRONLY,
+    var flags: posix.O = .{
+        .ACCMODE = if (options.read) .RDWR else .WRONLY,
         .CREAT = true,
-        .TRUNC = flags.truncate,
-        .EXCL = flags.exclusive,
+        .TRUNC = options.truncate,
+        .EXCL = options.exclusive,
     };
-    if (@hasField(posix.O, "LARGEFILE")) os_flags.LARGEFILE = true;
-    if (@hasField(posix.O, "CLOEXEC")) os_flags.CLOEXEC = true;
+    if (@hasField(posix.O, "LARGEFILE")) flags.LARGEFILE = true;
+    if (@hasField(posix.O, "CLOEXEC")) flags.CLOEXEC = true;
+    if (@hasField(posix.O, "RESOLVE_BENEATH")) flags.RESOLVE_BENEATH = options.resolve_beneath;
 
     // Use the O locking flags if the os supports them to acquire the lock
     // atomically. Note that the NONBLOCK flag is removed after the openat()
     // call is successful.
-    if (have_flock_open_flags) switch (flags.lock) {
+    if (have_flock_open_flags) switch (options.lock) {
         .none => {},
         .shared => {
-            os_flags.SHLOCK = true;
-            os_flags.NONBLOCK = flags.lock_nonblocking;
+            flags.SHLOCK = true;
+            flags.NONBLOCK = options.lock_nonblocking;
         },
         .exclusive => {
-            os_flags.EXLOCK = true;
-            os_flags.NONBLOCK = flags.lock_nonblocking;
+            flags.EXLOCK = true;
+            flags.NONBLOCK = options.lock_nonblocking;
         },
     };
 
     const fd: posix.fd_t = fd: {
         const syscall: Syscall = try .start();
         while (true) {
-            const rc = openat_sym(dir.handle, sub_path_posix, os_flags, flags.permissions.toMode());
+            const rc = openat_sym(dir.handle, sub_path_posix, flags, options.permissions.toMode());
             switch (posix.errno(rc)) {
                 .SUCCESS => {
                     syscall.finish();
@@ -4298,9 +4299,9 @@ fn dirCreateFilePosix(
     };
     errdefer closeFd(fd);
 
-    if (have_flock and !have_flock_open_flags and flags.lock != .none) {
-        const lock_nonblocking: i32 = if (flags.lock_nonblocking) posix.LOCK.NB else 0;
-        const lock_flags = switch (flags.lock) {
+    if (have_flock and !have_flock_open_flags and options.lock != .none) {
+        const lock_nonblocking: i32 = if (options.lock_nonblocking) posix.LOCK.NB else 0;
+        const lock_flags = switch (options.lock) {
             .none => unreachable,
             .shared => posix.LOCK.SH | lock_nonblocking,
             .exclusive => posix.LOCK.EX | lock_nonblocking,
@@ -4332,7 +4333,7 @@ fn dirCreateFilePosix(
         }
     }
 
-    if (have_flock_open_flags and flags.lock_nonblocking) {
+    if (have_flock_open_flags and options.lock_nonblocking) {
         var fl_flags: usize = fl: {
             const syscall: Syscall = try .start();
             while (true) {
@@ -4385,7 +4386,7 @@ fn dirCreateFileWindows(
     userdata: ?*anyopaque,
     dir: Dir,
     sub_path: []const u8,
-    flags: File.CreateFlags,
+    flags: Dir.CreateFileOptions,
 ) File.OpenError!File {
     const t: *Threaded = @ptrCast(@alignCast(userdata));
     _ = t;
@@ -4535,7 +4536,7 @@ fn dirCreateFileWasi(
     userdata: ?*anyopaque,
     dir: Dir,
     sub_path: []const u8,
-    flags: File.CreateFlags,
+    flags: Dir.CreateFileOptions,
 ) File.OpenError!File {
     const t: *Threaded = @ptrCast(@alignCast(userdata));
     _ = t;
@@ -4785,45 +4786,46 @@ fn dirOpenFilePosix(
     userdata: ?*anyopaque,
     dir: Dir,
     sub_path: []const u8,
-    flags: File.OpenFlags,
+    options: Dir.OpenFileOptions,
 ) File.OpenError!File {
     const t: *Threaded = @ptrCast(@alignCast(userdata));
 
     var path_buffer: [posix.PATH_MAX]u8 = undefined;
     const sub_path_posix = try pathToPosix(sub_path, &path_buffer);
 
-    var os_flags: posix.O = switch (native_os) {
+    var flags: posix.O = switch (native_os) {
         .wasi => .{
-            .read = flags.mode != .write_only,
-            .write = flags.mode != .read_only,
-            .NOFOLLOW = !flags.follow_symlinks,
+            .read = options.mode != .write_only,
+            .write = options.mode != .read_only,
+            .NOFOLLOW = !options.follow_symlinks,
         },
         else => .{
-            .ACCMODE = switch (flags.mode) {
+            .ACCMODE = switch (options.mode) {
                 .read_only => .RDONLY,
                 .write_only => .WRONLY,
                 .read_write => .RDWR,
             },
-            .NOFOLLOW = !flags.follow_symlinks,
+            .NOFOLLOW = !options.follow_symlinks,
         },
     };
-    if (@hasField(posix.O, "CLOEXEC")) os_flags.CLOEXEC = true;
-    if (@hasField(posix.O, "LARGEFILE")) os_flags.LARGEFILE = true;
-    if (@hasField(posix.O, "NOCTTY")) os_flags.NOCTTY = !flags.allow_ctty;
-    if (@hasField(posix.O, "PATH") and flags.path_only) os_flags.PATH = true;
+    if (@hasField(posix.O, "CLOEXEC")) flags.CLOEXEC = true;
+    if (@hasField(posix.O, "LARGEFILE")) flags.LARGEFILE = true;
+    if (@hasField(posix.O, "NOCTTY")) flags.NOCTTY = !options.allow_ctty;
+    if (@hasField(posix.O, "PATH")) flags.PATH = options.path_only;
+    if (@hasField(posix.O, "RESOLVE_BENEATH")) flags.RESOLVE_BENEATH = options.resolve_beneath;
 
-    // Use the O locking flags if the os supports them to acquire the lock
+    // Use the O locking options if the os supports them to acquire the lock
     // atomically. Note that the NONBLOCK flag is removed after the openat()
     // call is successful.
-    if (have_flock_open_flags) switch (flags.lock) {
+    if (have_flock_open_flags) switch (options.lock) {
         .none => {},
         .shared => {
-            os_flags.SHLOCK = true;
-            os_flags.NONBLOCK = flags.lock_nonblocking;
+            flags.SHLOCK = true;
+            flags.NONBLOCK = options.lock_nonblocking;
         },
         .exclusive => {
-            os_flags.EXLOCK = true;
-            os_flags.NONBLOCK = flags.lock_nonblocking;
+            flags.EXLOCK = true;
+            flags.NONBLOCK = options.lock_nonblocking;
         },
     };
 
@@ -4832,7 +4834,7 @@ fn dirOpenFilePosix(
     const fd: posix.fd_t = fd: {
         const syscall: Syscall = try .start();
         while (true) {
-            const rc = openat_sym(dir.handle, sub_path_posix, os_flags, mode);
+            const rc = openat_sym(dir.handle, sub_path_posix, flags, mode);
             switch (posix.errno(rc)) {
                 .SUCCESS => {
                     syscall.finish();
@@ -4878,7 +4880,7 @@ fn dirOpenFilePosix(
     };
     errdefer closeFd(fd);
 
-    if (!flags.allow_directory) {
+    if (!options.allow_directory) {
         const is_dir = is_dir: {
             const stat = fileStat(t, .{
                 .handle = fd,
@@ -4893,9 +4895,9 @@ fn dirOpenFilePosix(
         if (is_dir) return error.IsDir;
     }
 
-    if (have_flock and !have_flock_open_flags and flags.lock != .none) {
-        const lock_nonblocking: i32 = if (flags.lock_nonblocking) posix.LOCK.NB else 0;
-        const lock_flags = switch (flags.lock) {
+    if (have_flock and !have_flock_open_flags and options.lock != .none) {
+        const lock_nonblocking: i32 = if (options.lock_nonblocking) posix.LOCK.NB else 0;
+        const lock_flags = switch (options.lock) {
             .none => unreachable,
             .shared => posix.LOCK.SH | lock_nonblocking,
             .exclusive => posix.LOCK.EX | lock_nonblocking,
@@ -4926,7 +4928,7 @@ fn dirOpenFilePosix(
         }
     }
 
-    if (have_flock_open_flags and flags.lock_nonblocking) {
+    if (have_flock_open_flags and options.lock_nonblocking) {
         var fl_flags: usize = fl: {
             const syscall: Syscall = try .start();
             while (true) {
@@ -4979,7 +4981,7 @@ fn dirOpenFileWindows(
     userdata: ?*anyopaque,
     dir: Dir,
     sub_path: []const u8,
-    flags: File.OpenFlags,
+    flags: Dir.OpenFileOptions,
 ) File.OpenError!File {
     const t: *Threaded = @ptrCast(@alignCast(userdata));
     _ = t;
@@ -4992,7 +4994,7 @@ fn dirOpenFileWindows(
 pub fn dirOpenFileWtf16(
     dir_handle: ?windows.HANDLE,
     sub_path_w: []const u16,
-    flags: File.OpenFlags,
+    flags: Dir.OpenFileOptions,
 ) File.OpenError!File {
     const allow_directory = flags.allow_directory and !flags.isWrite();
     if (!allow_directory and std.mem.eql(u16, sub_path_w, &.{'.'})) return error.IsDir;
@@ -5129,7 +5131,7 @@ fn dirOpenFileWasi(
     userdata: ?*anyopaque,
     dir: Dir,
     sub_path: []const u8,
-    flags: File.OpenFlags,
+    flags: Dir.OpenFileOptions,
 ) File.OpenError!File {
     if (builtin.link_libc) return dirOpenFilePosix(userdata, dir, sub_path, flags);
     const t: *Threaded = @ptrCast(@alignCast(userdata));
@@ -10193,7 +10195,7 @@ fn posixSeekTo(fd: posix.fd_t, offset: u64) File.SeekError!void {
     }
 }
 
-fn processExecutableOpen(userdata: ?*anyopaque, flags: File.OpenFlags) process.OpenExecutableError!File {
+fn processExecutableOpen(userdata: ?*anyopaque, flags: Dir.OpenFileOptions) process.OpenExecutableError!File {
     const t: *Threaded = @ptrCast(@alignCast(userdata));
     switch (native_os) {
         .wasi => return error.OperationUnsupported,
@@ -12196,6 +12198,7 @@ fn netBindIpPosix(
     var storage: PosixAddress = undefined;
     var addr_len = addressToPosix(address, &storage);
     try posixBind(socket_fd, &storage.any, addr_len);
+    if (options.allow_broadcast) try setSocketOptionPosix(socket_fd, std.posix.SOL.SOCKET, std.posix.SO.BROADCAST, 1);
     try posixGetSockName(socket_fd, &storage.any, &addr_len);
     return .{ .handle = socket_fd, .address = addressFromPosix(&storage) };
 }
@@ -12212,6 +12215,7 @@ fn netBindIpWindows(
     const socket_handle = try openSocketAfd(family, options);
     errdefer windows.CloseHandle(socket_handle);
     const bound_address = try bindSocketIpAfd(socket_handle, address, .Active);
+    if (options.allow_broadcast) try setSocketOptionAfd(socket_handle, ws2_32.SOL.SOCKET, ws2_32.SO.BROADCAST, true);
     return .{ .handle = socket_handle, .address = bound_address };
 }
 

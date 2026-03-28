@@ -1674,7 +1674,7 @@ pub const Object = struct {
         } else {
             const fqn = try self.builder.strtabString(ip.getNav(nav_index).fqn.toSlice(ip));
             try global_index.rename(fqn, &self.builder);
-            global_index.setLinkage(.internal, &self.builder);
+            global_index.setLinkage(if (self.builder.strip) .private else .internal, &self.builder);
             if (comp.config.dll_export_fns)
                 global_index.setDllStorageClass(.default, &self.builder);
             global_index.setUnnamedAddr(.unnamed_addr, &self.builder);
@@ -2694,7 +2694,7 @@ pub const Object = struct {
         defer attributes.deinit(&o.builder);
 
         if (!is_extern) {
-            function_index.setLinkage(.internal, &o.builder);
+            function_index.setLinkage(if (o.builder.strip) .private else .internal, &o.builder);
             function_index.setUnnamedAddr(.unnamed_addr, &o.builder);
         } else {
             if (target.cpu.arch.isWasm()) {
@@ -2926,7 +2926,7 @@ pub const Object = struct {
         gop.value_ptr.* = variable_index.ptrConst(&o.builder).global;
 
         try variable_index.setInitializer(try o.lowerValue(pt, uav), &o.builder);
-        variable_index.setLinkage(.internal, &o.builder);
+        variable_index.setLinkage(if (o.builder.strip) .private else .internal, &o.builder);
         variable_index.setMutability(.constant, &o.builder);
         variable_index.setUnnamedAddr(.unnamed_addr, &o.builder);
         variable_index.setAlignment(alignment.toLlvm(), &o.builder);
@@ -2967,7 +2967,7 @@ pub const Object = struct {
         // This is needed for declarations created by `@extern`.
         switch (linkage) {
             .internal => {
-                variable_index.setLinkage(.internal, &o.builder);
+                variable_index.setLinkage(if (o.builder.strip) .private else .internal, &o.builder);
                 variable_index.setUnnamedAddr(.unnamed_addr, &o.builder);
             },
             .strong, .weak => {
@@ -4269,7 +4269,7 @@ pub const Object = struct {
         defer attributes.deinit(&o.builder);
         try o.addCommonFnAttributes(&attributes, zcu.root_mod, zcu.root_mod.omit_frame_pointer);
 
-        function_index.setLinkage(.internal, &o.builder);
+        function_index.setLinkage(if (o.builder.strip) .private else .internal, &o.builder);
         function_index.setCallConv(.fastcc, &o.builder);
         function_index.setAttributes(try attributes.finish(&o.builder), &o.builder);
         return function_index;
@@ -4297,7 +4297,7 @@ pub const Object = struct {
         defer attributes.deinit(&o.builder);
         try o.addCommonFnAttributes(&attributes, zcu.root_mod, zcu.root_mod.omit_frame_pointer);
 
-        function_index.setLinkage(.internal, &o.builder);
+        function_index.setLinkage(if (o.builder.strip) .private else .internal, &o.builder);
         function_index.setCallConv(.fastcc, &o.builder);
         function_index.setAttributes(try attributes.finish(&o.builder), &o.builder);
         gop.value_ptr.* = function_index.ptrConst(&o.builder).global;
@@ -4377,7 +4377,7 @@ pub const Object = struct {
         defer attributes.deinit(builder);
         try o.addCommonFnAttributes(&attributes, zcu.root_mod, zcu.root_mod.omit_frame_pointer);
 
-        function_index.setLinkage(.internal, builder);
+        function_index.setLinkage(if (o.builder.strip) .private else .internal, builder);
         function_index.setCallConv(.fastcc, builder);
         function_index.setAttributes(try attributes.finish(builder), builder);
 
@@ -6351,7 +6351,7 @@ pub const FuncGen = struct {
                 .default,
             );
             try table_variable.setInitializer(table_val, &o.builder);
-            table_variable.setLinkage(.internal, &o.builder);
+            table_variable.setLinkage(if (o.builder.strip) .private else .internal, &o.builder);
             table_variable.setUnnamedAddr(.unnamed_addr, &o.builder);
 
             const table_includes_else = item_count != table_len;

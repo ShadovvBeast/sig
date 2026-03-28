@@ -1126,7 +1126,7 @@ pub const Request = struct {
     /// `redirect_buffer` must outlive accesses to `Request.uri`. If this
     /// buffer capacity would be exceeded, `error.HttpRedirectLocationOversize`
     /// is returned instead. This buffer may be empty if no redirects are to be
-    /// handled.
+    /// handled. RFC 9110 recommends making this at least 8000 bytes.
     ///
     /// If this fails with `error.ReadFailed` then the `Connection.getReadError`
     /// method of `r.connection` can be used to get more detailed information.
@@ -1748,7 +1748,8 @@ pub fn request(
 }
 
 pub const FetchOptions = struct {
-    /// `null` means it will be heap-allocated.
+    /// `null` means it will be heap-allocated. RFC 9110 recommends at least
+    /// 8000 bytes.
     redirect_buffer: ?[]u8 = null,
     /// `null` means it will be heap-allocated.
     decompress_buffer: ?[]u8 = null,

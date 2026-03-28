@@ -4991,6 +4991,7 @@ fn netBindIp(
     var storage: PosixAddress = undefined;
     var addr_len = addressToPosix(address, &storage);
     try ev.bind(&maybe_sync.cancel_region, socket_fd, &storage.any, addr_len);
+    if (options.allow_broadcast) try ev.setsockopt(&maybe_sync.cancel_region, socket_fd, linux.SOL.SOCKET, linux.SO.BROADCAST, 1);
     try ev.getsockname(try maybe_sync.enterSync(ev), socket_fd, &storage.any, &addr_len);
     return .{ .handle = socket_fd, .address = addressFromPosix(&storage) };
 }
