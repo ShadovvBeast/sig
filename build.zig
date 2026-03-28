@@ -699,6 +699,8 @@ pub fn build(b: *std.Build) !void {
     const sig_zon_mod = b.path("lib/sig/zon.zig");
     const sig_uri_mod = b.path("lib/sig/uri.zig");
     const sig_json_mod = b.path("lib/sig/json.zig");
+    const sig_validator_mod = b.path("tools/sig_conflict_resolver/validator.sig");
+    const sig_prompt_mod = b.path("tools/sig_conflict_resolver/prompt.sig");
     const sig_harness_mod = b.path("test/sig_pbt/harness.sig");
 
     // ── test-sig step ────────────────────────────────────────────────────
@@ -721,6 +723,7 @@ pub fn build(b: *std.Build) !void {
         "test/sig_pbt/compress_properties.sig",
         "test/sig_pbt/format_parser_properties.sig",
         "test/sig_pbt/file_extension_properties.sig",
+        "test/sig_pbt/conflict_resolver_properties.sig",
     };
 
     for (sig_pbt_files) |pbt_file| {
@@ -750,6 +753,8 @@ pub fn build(b: *std.Build) !void {
             .sig_zon = sig_zon_mod,
             .sig_uri = sig_uri_mod,
             .sig_json = sig_json_mod,
+            .sig_validator = sig_validator_mod,
+            .sig_prompt = sig_prompt_mod,
             .harness = sig_harness_mod,
         });
         sig_test_step.dependOn(&b.addRunArtifact(t).step);
@@ -774,6 +779,7 @@ pub fn build(b: *std.Build) !void {
         "test/sig_unit/compress_test.sig",
         "test/sig_unit/format_parsers_test.sig",
         "test/sig_unit/file_extension_test.sig",
+        "test/sig_unit/conflict_resolver_test.sig",
     };
 
     for (sig_unit_files) |unit_file| {
@@ -804,6 +810,8 @@ pub fn build(b: *std.Build) !void {
             .sig_zon = sig_zon_mod,
             .sig_uri = sig_uri_mod,
             .sig_json = sig_json_mod,
+            .sig_validator = sig_validator_mod,
+            .sig_prompt = sig_prompt_mod,
         });
         sig_test_step.dependOn(&b.addRunArtifact(t).step);
     }
@@ -885,6 +893,8 @@ const SigImportPaths = struct {
     sig_zon: ?std.Build.LazyPath = null,
     sig_uri: ?std.Build.LazyPath = null,
     sig_json: ?std.Build.LazyPath = null,
+    sig_validator: ?std.Build.LazyPath = null,
+    sig_prompt: ?std.Build.LazyPath = null,
     harness: ?std.Build.LazyPath = null,
 };
 
@@ -909,6 +919,8 @@ fn addSigImports(mod: *std.Build.Module, paths: SigImportPaths) void {
         .{ "sig_zon", paths.sig_zon },
         .{ "sig_uri", paths.sig_uri },
         .{ "sig_json", paths.sig_json },
+        .{ "sig_validator", paths.sig_validator },
+        .{ "sig_prompt", paths.sig_prompt },
         .{ "harness", paths.harness },
     };
     inline for (fields) |entry| {

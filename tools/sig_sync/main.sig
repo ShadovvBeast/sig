@@ -119,8 +119,32 @@ pub fn parseManifest(json_bytes: []const u8) SyncManifest {
     while (pos < json_bytes.len and manifest.entry_count < MAX_ENTRIES) {
         // Find next '{'.
         const obj_start = std.mem.indexOfPos(u8, json_bytes, pos, "{") orelse break;
-        // Find matching '}'.
-        const obj_end = std.mem.indexOfPos(u8, json_bytes, obj_start, "}") orelse break;
+        // Find matching '}' — count braces to handle nested objects.
+        const obj_end = blk: {
+            var depth: usize = 0;
+            var i: usize = obj_start;
+            var in_string = false;
+            while (i < json_bytes.len) : (i += 1) {
+                if (in_string) {
+                    if (json_bytes[i] == '\\') {
+                        i += 1; // skip escaped char
+                    } else if (json_bytes[i] == '"') {
+                        in_string = false;
+                    }
+                    continue;
+                }
+                switch (json_bytes[i]) {
+                    '"' => in_string = true,
+                    '{' => depth += 1,
+                    '}' => {
+                        depth -= 1;
+                        if (depth == 0) break :blk i;
+                    },
+                    else => {},
+                }
+            }
+            break :blk json_bytes.len - 1;
+        };
         const obj = json_bytes[obj_start .. obj_end + 1];
 
         var entry = SyncEntry{};
@@ -166,6 +190,51 @@ pub fn parseManifest(json_bytes: []const u8) SyncManifest {
                         si += 1;
                     }
                 }
+            }
+        }
+
+        // Parse optional ai_resolution_details object if present.
+        const ai_key_pos = std.mem.indexOf(u8, obj, "\"ai_resolution_details\"");
+        if (ai_key_pos) |akp| {
+            const ai_rest = obj[akp..];
+            const ai_obj_start = std.mem.indexOf(u8, ai_rest, "{");
+            if (ai_obj_start) |aos| {
+                // Find matching '}' for the nested ai_resolution_details object.
+                const ai_obj_end = inner_blk: {
+                    var d: usize = 0;
+                    var j: usize = aos;
+                    var in_str = false;
+                    while (j < ai_rest.len) : (j += 1) {
+                        if (in_str) {
+                            if (ai_rest[j] == '\\') {
+                                j += 1;
+                            } else if (ai_rest[j] == '"') {
+                                in_str = false;
+                            }
+                            continue;
+                        }
+                        switch (ai_rest[j]) {
+                            '"' => in_str = true,
+                            '{' => d += 1,
+                            '}' => {
+                                d -= 1;
+                                if (d == 0) break :inner_blk j;
+                            },
+                            else => {},
+                        }
+                    }
+                    break :inner_blk ai_rest.len - 1;
+                };
+                const ai_obj = ai_rest[aos .. ai_obj_end + 1];
+
+                entry.ai_details.confidence = @intCast(@as(i64, @max(0, sig_json.extractInt(ai_obj, "confidence") catch 0)));
+                entry.ai_details.resolved_file_count = @intCast(@as(i64, @max(0, sig_json.extractInt(ai_obj, "resolved_file_count") catch 0)));
+
+                var expl_buf: [512]u8 = undefined;
+                const expl = sig_json.extractString(ai_obj, "explanation", &expl_buf) catch "";
+                if (expl.len > 0) entry.ai_details.setExplanation(expl);
+
+                entry.has_ai_details = true;
             }
         }
 
@@ -221,6 +290,22 @@ pub fn serializeManifest(manifest: *const SyncManifest, buf: []u8) SigError![]co
             try w.endArray();
         } else {
             try w.writeNull();
+        }
+
+        if (entry.has_ai_details) {
+            try w.objectField("ai_resolution_details");
+            try w.beginObject();
+
+            try w.objectField("confidence");
+            try w.writeInt(@as(i64, entry.ai_details.confidence));
+
+            try w.objectField("explanation");
+            try w.writeString(entry.ai_details.explanation());
+
+            try w.objectField("resolved_file_count");
+            try w.writeInt(@as(i64, entry.ai_details.resolved_file_count));
+
+            try w.endObject();
         }
 
         try w.endObject();
@@ -617,6 +702,100 @@ test "serializeManifest round trip" {
     try std.testing.expectEqualStrings("abc1234567890def1234567890abcdef12345678", parsed.lastCommit());
     try std.testing.expectEqual(@as(i64, 1700000000), parsed.last_integration_timestamp);
     try std.testing.expectEqual(@as(usize, 1), parsed.entry_count);
+}
+
+test "parseManifest with ai_resolved entry and ai_resolution_details" {
+    const json =
+        \\{
+        \\  "last_integrated_commit": "ccc0000000000000000000000000000000000000",
+        \\  "last_integration_timestamp": 1700002000,
+        \\  "entries": [
+        \\    {
+        \\      "upstream_commit": "ddd0000000000000000000000000000000000000",
+        \\      "timestamp": 1700002000,
+        \\      "status": "ai_resolved",
+        \\      "conflicting_files": ["lib/sig/fmt.zig"],
+        \\      "ai_resolution_details": {
+        \\        "confidence": 92,
+        \\        "explanation": "Accepted upstream changes and repositioned sig block",
+        \\        "resolved_file_count": 1
+        \\      }
+        \\    }
+        \\  ]
+        \\}
+    ;
+    const manifest = parseManifest(json);
+    try std.testing.expectEqual(@as(usize, 1), manifest.entry_count);
+    try std.testing.expectEqual(SyncEntry.Status.ai_resolved, manifest.entries[0].status);
+    try std.testing.expect(manifest.entries[0].has_ai_details);
+    try std.testing.expectEqual(@as(u8, 92), manifest.entries[0].ai_details.confidence);
+    try std.testing.expectEqual(@as(u8, 1), manifest.entries[0].ai_details.resolved_file_count);
+    try std.testing.expectEqualStrings("Accepted upstream changes and repositioned sig block", manifest.entries[0].ai_details.explanation());
+    try std.testing.expectEqual(@as(usize, 1), manifest.entries[0].conflict_count);
+    try std.testing.expectEqualStrings("lib/sig/fmt.zig", manifest.entries[0].conflictFile(0));
+}
+
+test "parseManifest legacy manifest without ai_resolution_details" {
+    const json =
+        \\{
+        \\  "last_integrated_commit": "eee0000000000000000000000000000000000000",
+        \\  "last_integration_timestamp": 1700003000,
+        \\  "entries": [
+        \\    {
+        \\      "upstream_commit": "fff0000000000000000000000000000000000000",
+        \\      "timestamp": 1700003000,
+        \\      "status": "integrated",
+        \\      "conflicting_files": null
+        \\    }
+        \\  ]
+        \\}
+    ;
+    const manifest = parseManifest(json);
+    try std.testing.expectEqual(@as(usize, 1), manifest.entry_count);
+    try std.testing.expectEqual(SyncEntry.Status.integrated, manifest.entries[0].status);
+    try std.testing.expect(!manifest.entries[0].has_ai_details);
+    try std.testing.expectEqual(@as(u8, 0), manifest.entries[0].ai_details.confidence);
+    try std.testing.expectEqual(@as(u8, 0), manifest.entries[0].ai_details.resolved_file_count);
+    try std.testing.expectEqual(@as(usize, 0), manifest.entries[0].ai_details.explanation_len);
+}
+
+test "parseManifest with multiple entries including ai_resolved" {
+    const json =
+        \\{
+        \\  "last_integrated_commit": "aaa0000000000000000000000000000000000000",
+        \\  "last_integration_timestamp": 1700004000,
+        \\  "entries": [
+        \\    {
+        \\      "upstream_commit": "bbb0000000000000000000000000000000000000",
+        \\      "timestamp": 1700001000,
+        \\      "status": "integrated",
+        \\      "conflicting_files": null
+        \\    },
+        \\    {
+        \\      "upstream_commit": "ccc0000000000000000000000000000000000000",
+        \\      "timestamp": 1700002000,
+        \\      "status": "ai_resolved",
+        \\      "conflicting_files": ["src/main.zig"],
+        \\      "ai_resolution_details": {
+        \\        "confidence": 85,
+        \\        "explanation": "Resolved via AI",
+        \\        "resolved_file_count": 1
+        \\      }
+        \\    }
+        \\  ]
+        \\}
+    ;
+    const manifest = parseManifest(json);
+    try std.testing.expectEqual(@as(usize, 2), manifest.entry_count);
+    // First entry: integrated, no AI details.
+    try std.testing.expectEqual(SyncEntry.Status.integrated, manifest.entries[0].status);
+    try std.testing.expect(!manifest.entries[0].has_ai_details);
+    // Second entry: ai_resolved with details.
+    try std.testing.expectEqual(SyncEntry.Status.ai_resolved, manifest.entries[1].status);
+    try std.testing.expect(manifest.entries[1].has_ai_details);
+    try std.testing.expectEqual(@as(u8, 85), manifest.entries[1].ai_details.confidence);
+    try std.testing.expectEqualStrings("Resolved via AI", manifest.entries[1].ai_details.explanation());
+    try std.testing.expectEqual(@as(u8, 1), manifest.entries[1].ai_details.resolved_file_count);
 }
 
 test "SyncEntry status values" {
