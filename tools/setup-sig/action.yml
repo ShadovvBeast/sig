@@ -126,9 +126,9 @@ runs:
     - name: Verify Sig installation
       shell: bash
       if: runner.os != 'Windows'
-      run: zig version
+      run: "${{ runner.tool_cache }}/sig/bin/zig" version
 
     - name: Verify Sig installation (Windows)
       shell: pwsh
       if: runner.os == 'Windows'
-      run: zig version
+      run: & "${{ runner.tool_cache }}\sig\bin\zig.exe" version
