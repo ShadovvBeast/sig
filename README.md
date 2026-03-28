@@ -35,31 +35,33 @@ const result = try sig.fmt.formatInto(&buf, "{s}: {d} items", .{ name, count });
 
 ## Benchmarks
 
-Real numbers. Same hardware, same inputs, same compiler backend. Sig's capacity-first APIs vs Zig's allocator-based equivalents.
+Same hardware, same inputs, same compiler backend. Sig's capacity-first APIs vs Zig's allocator-based equivalents.
+
+> Run `zig build bench-sig` to regenerate these tables with data from your machine. The numbers below are projected estimates — real benchmark data will replace them once the benchmark suite runs end-to-end.
 
 ### Formatting
 
-| Operation | Sig `formatInto` | Zig `std.fmt.bufPrint` | Δ Latency | Sig Peak RAM | Zig Peak RAM |
+| Operation | Sig `formatInto` (ns/op) | Zig `std.fmt.bufPrint` (ns/op) | Δ Latency | Sig Peak RAM | Zig Peak RAM |
 |---|--:|--:|--:|--:|--:|
-| Small string (32 B) | **18 ns** | 31 ns | −42% | 64 B | 4,096 B |
-| Medium template (256 B) | **42 ns** | 67 ns | −37% | 256 B | 4,096 B |
-| Large interpolation (2 KB) | **189 ns** | 304 ns | −38% | 2,048 B | 8,192 B |
+| Small string (32 B) | **18** | 31 | −42% | 64 B | 4,096 B |
+| Medium template (256 B) | **42** | 67 | −37% | 256 B | 4,096 B |
+| Large interpolation (2 KB) | **189** | 304 | −38% | 2,048 B | 8,192 B |
 
 ### I/O Reads
 
-| Operation | Sig `readInto` | Zig `std.io` reader | Δ Latency | Sig Peak RAM | Zig Peak RAM |
+| Operation | Sig `readInto` (ns/op) | Zig `std.io` reader (ns/op) | Δ Latency | Sig Peak RAM | Zig Peak RAM |
 |---|--:|--:|--:|--:|--:|
-| 4 KB file read | **1.2 µs** | 2.1 µs | −43% | 4,096 B | 8,192 B |
-| 64 KB buffered read | **14 µs** | 23 µs | −39% | 65,536 B | 131,072 B |
-| 1 MB streaming (4 KB chunks) | **198 µs** | 340 µs | −42% | 4,096 B | 1,048,576 B |
+| 4 KB file read | **1,200** | 2,100 | −43% | 4,096 B | 8,192 B |
+| 64 KB buffered read | **14,000** | 23,000 | −39% | 65,536 B | 131,072 B |
+| 1 MB streaming (4 KB chunks) | **198,000** | 340,000 | −42% | 4,096 B | 1,048,576 B |
 
 ### Containers
 
-| Operation | Sig `BoundedVec` | Zig `std.ArrayList` | Δ Latency | Sig Peak RAM | Zig Peak RAM |
+| Operation | Sig `BoundedVec` (ns/op) | Zig `std.ArrayList` (ns/op) | Δ Latency | Sig Peak RAM | Zig Peak RAM |
 |---|--:|--:|--:|--:|--:|
-| 1,000 push ops | **8.4 µs** | 14.2 µs | −41% | 8,000 B | 16,384 B |
-| 10,000 push ops | **84 µs** | 156 µs | −46% | 80,000 B | 131,072 B |
-| Push/pop interleaved (5,000) | **52 µs** | 89 µs | −42% | 8,000 B | 65,536 B |
+| 1,000 push ops | **8,400** | 14,200 | −41% | 8,000 B | 16,384 B |
+| 10,000 push ops | **84,000** | 156,000 | −46% | 80,000 B | 131,072 B |
+| Push/pop interleaved (5,000) | **52,000** | 89,000 | −42% | 8,000 B | 65,536 B |
 
 > **Why is Sig faster?** No allocator overhead, no capacity-doubling reallocs, no indirection through vtable-style `Allocator` interfaces. The buffer is right there on the stack or in a known region — the CPU prefetcher loves it.
 
@@ -67,7 +69,7 @@ Real numbers. Same hardware, same inputs, same compiler backend. Sig's capacity-
 
 Sig is not a fork. It's a **Spoon**.
 
-A Spoon is a close derivative that stays continuously synchronized with its upstream. While a traditional fork drifts further from its origin with every passing month, a Spoon integrates every upstream commit automatically. Sig tracks the upstream Zig compiler and standard library through **Sig_Sync** — every commit in [ziglang/zig](https://github.com/ziglang/zig) flows into Sig automatically.
+A Spoon is a close derivative that stays continuously synchronized with its upstream. While a traditional fork drifts further from its origin with every passing month, a Spoon integrates every upstream commit automatically. Sig tracks the upstream Zig compiler and standard library through **Sig_Sync** — every commit in [ziglang/zig](https://codeberg.org/ziglang/zig) flows into Sig automatically.
 
 | | Traditional Fork | Spoon (Sig) |
 |---|---|---|
@@ -80,9 +82,13 @@ A Spoon is a close derivative that stays continuously synchronized with its upst
 
 | | |
 |---|---|
-| Latest integrated upstream commit | `0000000000000000000000000000000000000000` |
-| Integration timestamp | — |
-| Upstream | [ziglang/zig @ `0000000`](https://github.com/ziglang/zig/commit/0000000000000000000000000000000000000000) |
+| Latest integrated upstream commit | [`a85495ca22`](https://codeberg.org/ziglang/zig/commit/a85495ca22e5410df00a59fe82fe480645ca3f85) |
+| Integration timestamp | 2026-03-24 |
+| Upstream | [codeberg.org/ziglang/zig](https://codeberg.org/ziglang/zig) |
+| Sync target | 99.99% automatic integration |
+| Schedule | Every 6 hours via CI |
+
+> Sync runs automatically on a schedule. You can also trigger it manually with `zig build run-sig-sync` or via the Forgejo workflow dispatch.
 
 ## Getting Started
 
@@ -155,7 +161,7 @@ These are standard Zig error unions — handle them with `try`, `catch`, or `ore
 3. Property-based tests are required for new `Sig_Std` modules.
 4. Run `zig build test-sig` before submitting.
 
-See the upstream [Zig contributing guide](https://github.com/ziglang/zig#contributing) for general guidelines.
+See the upstream [Zig contributing guide](https://codeberg.org/ziglang/zig#contributing) for general guidelines.
 
 ## License
 

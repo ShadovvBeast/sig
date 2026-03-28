@@ -1,0 +1,90 @@
+name: sig-sync
+
+on:
+  # Primary trigger: Cloud Run watcher fires this on new upstream commits (~30s latency)
+  repository_dispatch:
+    types: [upstream-push]
+  # Fallback: poll every 5 minutes in case the watcher is down
+  schedule:
+    - cron: '*/5 * * * *'
+  # Manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+
+      - name: Add upstream Codeberg remote
+        run: |
+          git remote add upstream-zig https://codeberg.org/ziglang/zig.git || true
+          git fetch upstream-zig
+
+      - name: Check for new commits
+        id: check
+        run: |
+          LAST=$(jq -r '.last_integrated_commit' tools/sig_sync/manifest.json)
+          LATEST=$(git rev-parse upstream-zig/master)
+          if [ "$LAST" = "$LATEST" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "No new upstream commits"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "New commits: $LAST..$LATEST"
+          fi
+
+      - name: Configure git
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          git config user.name "sig-sync[bot]"
+          git config user.email "sig-sync@users.noreply.github.com"
+
+      - name: Build and run sig-sync
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          zig build run-sig-sync -- --remote upstream-zig --branch master
+        timeout-minutes: 30
+
+      - name: Push to GitHub (ShadovvBeast/sig master)
+        if: steps.check.outputs.skip != 'true'
+        run: git push origin HEAD:master
+
+      - name: Push to Codeberg fork (ShadowBeast/zig sig branch)
+        if: steps.check.outputs.skip != 'true' && env.HAS_CODEBERG == 'true'
+        run: |
+          git remote add codeberg-fork https://${{ secrets.CODEBERG_USER }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/ShadowBeast/zig.git || true
+          git push codeberg-fork HEAD:sig
+        env:
+          HAS_CODEBERG: ${{ secrets.CODEBERG_TOKEN != '' }}
+
+      - name: Check for conflicts
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          if grep -q '"conflict"' tools/sig_sync/manifest.json; then
+            echo "::warning::Sync encountered conflicts — check manifest for details"
+            exit 1
+          fi
+
+      - name: Regenerate README
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          zig build run-sig-readme || true
+          if git diff --quiet README.md tools/sig_sync/manifest.json; then
+            echo "README unchanged"
+          else
+            git add README.md tools/sig_sync/manifest.json
+            git commit -m "sig-sync: update manifest and README"
+            git push origin HEAD:master
+          fi

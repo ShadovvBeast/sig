@@ -669,6 +669,244 @@ pub fn build(b: *std.Build) !void {
         .skip_wasm = skip_wasm,
         .max_rss = 3_500_000_000,
     })) |test_libc_step| test_step.dependOn(test_libc_step);
+
+    // ── Sig (Strict Zig) build integration ───────────────────────────────
+    // Requirements: 9.4, 11.3, 12.1
+
+    // sig-mode build option: default emits warnings, strict emits errors
+    const sig_mode = b.option(enum { default, strict }, "sig-mode", "Sig diagnostic mode") orelse .default;
+    _ = sig_mode;
+
+    // Sig module sources — used by tests and benchmarks via @import
+    const sig_mod = b.path("lib/sig/sig.zig");
+    const sig_fmt_mod = b.path("lib/sig/fmt.zig");
+    const sig_io_mod = b.path("lib/sig/io.zig");
+    const sig_containers_mod = b.path("lib/sig/containers.zig");
+    const sig_string_mod = b.path("lib/sig/string.zig");
+    const sig_parse_mod = b.path("lib/sig/parse.zig");
+    const sig_errors_mod = b.path("lib/sig/errors.zig");
+    const sig_diagnostics_mod = b.path("src/sig_diagnostics.zig");
+    const sig_sync_mod = b.path("tools/sig_sync/main.zig");
+    const sig_readme_mod = b.path("tools/sig_readme/main.zig");
+    const sig_http_mod = b.path("lib/sig/http.zig");
+    const sig_fs_mod = b.path("lib/sig/fs.zig");
+    const sig_compress_mod = b.path("lib/sig/compress.zig");
+    const sig_tar_mod = b.path("lib/sig/tar.zig");
+    const sig_zip_mod = b.path("lib/sig/zip.zig");
+    const sig_zon_mod = b.path("lib/sig/zon.zig");
+    const sig_uri_mod = b.path("lib/sig/uri.zig");
+    const sig_json_mod = b.path("lib/sig/json.zig");
+    const sig_harness_mod = b.path("test/sig_pbt/harness.zig");
+
+    // ── test-sig step ────────────────────────────────────────────────────
+    const sig_test_step = b.step("test-sig", "Run Sig property and unit tests");
+
+    // Property-based test files
+    const sig_pbt_files = [_][]const u8{
+        "test/sig_pbt/harness.zig",
+        "test/sig_pbt/fmt_properties.zig",
+        "test/sig_pbt/io_properties.zig",
+        "test/sig_pbt/container_properties.zig",
+        "test/sig_pbt/string_properties.zig",
+        "test/sig_pbt/parse_properties.zig",
+        "test/sig_pbt/api_contract_properties.zig",
+        "test/sig_pbt/diagnostics_properties.zig",
+        "test/sig_pbt/sync_properties.zig",
+        "test/sig_pbt/http_properties.zig",
+        "test/sig_pbt/fs_properties.zig",
+        "test/sig_pbt/extended_container_properties.zig",
+        "test/sig_pbt/compress_properties.zig",
+        "test/sig_pbt/format_parser_properties.zig",
+    };
+
+    for (sig_pbt_files) |pbt_file| {
+        const t = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(pbt_file),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        addSigImports(t.root_module, .{
+            .sig = sig_mod,
+            .fmt = sig_fmt_mod,
+            .sig_io = sig_io_mod,
+            .containers = sig_containers_mod,
+            .sig_string = sig_string_mod,
+            .sig_parse = sig_parse_mod,
+            .errors = sig_errors_mod,
+            .sig_diagnostics = sig_diagnostics_mod,
+            .sig_sync = sig_sync_mod,
+            .sig_http = sig_http_mod,
+            .sig_fs = sig_fs_mod,
+            .sig_compress = sig_compress_mod,
+            .sig_tar = sig_tar_mod,
+            .sig_zip = sig_zip_mod,
+            .sig_zon = sig_zon_mod,
+            .sig_uri = sig_uri_mod,
+            .sig_json = sig_json_mod,
+            .harness = sig_harness_mod,
+        });
+        sig_test_step.dependOn(&b.addRunArtifact(t).step);
+    }
+
+    // Unit test files
+    const sig_unit_files = [_][]const u8{
+        "test/sig_unit/fmt_test.zig",
+        "test/sig_unit/io_test.zig",
+        "test/sig_unit/containers_test.zig",
+        "test/sig_unit/string_test.zig",
+        "test/sig_unit/parse_test.zig",
+        "test/sig_unit/errors_test.zig",
+        "test/sig_unit/diagnostics_test.zig",
+        "test/sig_unit/sync_test.zig",
+        "test/sig_unit/compat_test.zig",
+        "test/sig_unit/readme_test.zig",
+        "test/sig_unit/bench_test.zig",
+        "test/sig_unit/http_test.zig",
+        "test/sig_unit/fs_test.zig",
+        "test/sig_unit/extended_containers_test.zig",
+        "test/sig_unit/compress_test.zig",
+        "test/sig_unit/format_parsers_test.zig",
+    };
+
+    for (sig_unit_files) |unit_file| {
+        const t = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(unit_file),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        addSigImports(t.root_module, .{
+            .sig = sig_mod,
+            .fmt = sig_fmt_mod,
+            .sig_io = sig_io_mod,
+            .containers = sig_containers_mod,
+            .sig_string = sig_string_mod,
+            .sig_parse = sig_parse_mod,
+            .errors = sig_errors_mod,
+            .sig_diagnostics = sig_diagnostics_mod,
+            .sig_sync = sig_sync_mod,
+            .sig_readme = sig_readme_mod,
+            .sig_http = sig_http_mod,
+            .sig_fs = sig_fs_mod,
+            .sig_compress = sig_compress_mod,
+            .sig_tar = sig_tar_mod,
+            .sig_zip = sig_zip_mod,
+            .sig_zon = sig_zon_mod,
+            .sig_uri = sig_uri_mod,
+            .sig_json = sig_json_mod,
+        });
+        sig_test_step.dependOn(&b.addRunArtifact(t).step);
+    }
+
+    // ── bench-sig step ───────────────────────────────────────────────────
+    const sig_bench_step = b.step("bench-sig", "Run Sig benchmark suite");
+
+    const sig_bench_files = [_][]const u8{
+        "test/sig_bench/fmt_bench.zig",
+        "test/sig_bench/io_bench.zig",
+        "test/sig_bench/containers_bench.zig",
+    };
+
+    for (sig_bench_files) |bench_file| {
+        const bench_exe = b.addExecutable(.{
+            .name = std.fs.path.stem(bench_file),
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(bench_file),
+                .target = target,
+                .optimize = .ReleaseFast,
+            }),
+        });
+        bench_exe.root_module.addImport("sig", b.createModule(.{
+            .root_source_file = sig_mod,
+        }));
+        sig_bench_step.dependOn(&b.addRunArtifact(bench_exe).step);
+    }
+
+    // ── run-sig-sync step ────────────────────────────────────────────────
+    const sig_sync_step = b.step("run-sig-sync", "Run Sig upstream sync tool");
+    const sync_exe = b.addExecutable(.{
+        .name = "sig_sync",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/sig_sync/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    sig_sync_step.dependOn(&b.addRunArtifact(sync_exe).step);
+
+    // ── run-sig-coverage step ────────────────────────────────────────────
+    const sig_coverage_step = b.step("run-sig-coverage", "Run Sig std library coverage report");
+    const coverage_exe = b.addExecutable(.{
+        .name = "sig_coverage",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/sig_coverage/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    coverage_exe.root_module.addImport("sig", b.createModule(.{
+        .root_source_file = sig_mod,
+    }));
+    sig_coverage_step.dependOn(&b.addRunArtifact(coverage_exe).step);
+}
+
+/// Register all Sig-related module imports on a test/executable module.
+/// Each field corresponds to an `@import("name")` used by Sig test files.
+const SigImportPaths = struct {
+    sig: ?std.Build.LazyPath = null,
+    fmt: ?std.Build.LazyPath = null,
+    sig_io: ?std.Build.LazyPath = null,
+    containers: ?std.Build.LazyPath = null,
+    sig_string: ?std.Build.LazyPath = null,
+    sig_parse: ?std.Build.LazyPath = null,
+    errors: ?std.Build.LazyPath = null,
+    sig_diagnostics: ?std.Build.LazyPath = null,
+    sig_sync: ?std.Build.LazyPath = null,
+    sig_readme: ?std.Build.LazyPath = null,
+    sig_http: ?std.Build.LazyPath = null,
+    sig_fs: ?std.Build.LazyPath = null,
+    sig_compress: ?std.Build.LazyPath = null,
+    sig_tar: ?std.Build.LazyPath = null,
+    sig_zip: ?std.Build.LazyPath = null,
+    sig_zon: ?std.Build.LazyPath = null,
+    sig_uri: ?std.Build.LazyPath = null,
+    sig_json: ?std.Build.LazyPath = null,
+    harness: ?std.Build.LazyPath = null,
+};
+
+fn addSigImports(mod: *std.Build.Module, paths: SigImportPaths) void {
+    const b = mod.owner;
+    const fields = .{
+        .{ "sig", paths.sig },
+        .{ "fmt", paths.fmt },
+        .{ "sig_io", paths.sig_io },
+        .{ "containers", paths.containers },
+        .{ "sig_string", paths.sig_string },
+        .{ "sig_parse", paths.sig_parse },
+        .{ "errors", paths.errors },
+        .{ "sig_diagnostics", paths.sig_diagnostics },
+        .{ "sig_sync", paths.sig_sync },
+        .{ "sig_readme", paths.sig_readme },
+        .{ "sig_http", paths.sig_http },
+        .{ "sig_fs", paths.sig_fs },
+        .{ "sig_compress", paths.sig_compress },
+        .{ "sig_tar", paths.sig_tar },
+        .{ "sig_zip", paths.sig_zip },
+        .{ "sig_zon", paths.sig_zon },
+        .{ "sig_uri", paths.sig_uri },
+        .{ "sig_json", paths.sig_json },
+        .{ "harness", paths.harness },
+    };
+    inline for (fields) |entry| {
+        if (entry[1]) |path| {
+            mod.addImport(entry[0], b.createModule(.{
+                .root_source_file = path,
+            }));
+        }
+    }
 }
 
 fn addWasiUpdateStep(b: *std.Build, version: [:0]const u8) !void {

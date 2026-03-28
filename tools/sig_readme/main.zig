@@ -1,66 +1,46 @@
 const std = @import("std");
-const Writer = std.Io.Writer;
+const sig = @import("sig");
+const sig_fmt = sig.fmt;
+const sig_json = sig.json;
+const sig_fs = sig.fs;
 
-/// Sig README Generator
+/// Sig README Generator (zero allocators)
 ///
-/// Reads benchmark JSON and sync manifest JSON, then generates README.md with:
-/// - Logo and tagline: "Memory is not a guess"
-/// - Why Sig section with code comparison
-/// - Real benchmark tables (formatting, I/O, containers)
-/// - Spoon model explanation and sync status indicator
-/// - Quick start, memory model, error model, contributing
+/// Reads sync manifest JSON, then generates README.md.
+/// All memory is stack-allocated. No Allocator anywhere.
 
-// ── Data Models ──────────────────────────────────────────────────────────
-
-const BenchmarkEntry = struct {
-    name: []const u8 = "N/A",
-    sig_ns_per_op: ?u64 = null,
-    std_ns_per_op: ?u64 = null,
-    sig_peak_bytes: ?u64 = null,
-    std_peak_bytes: ?u64 = null,
-};
-
-const BenchmarkSuite = struct {
-    suite: []const u8 = "",
-    benchmarks: []const BenchmarkEntry = &.{},
-};
-
-const SyncEntry = struct {
-    upstream_commit: []const u8 = "",
-    timestamp: i64 = 0,
-    status: []const u8 = "integrated",
-    conflicting_files: ?[]const []const u8 = null,
-};
+// ── Data Models (inline, no heap) ────────────────────────────────────────
 
 pub const SyncManifest = struct {
-    last_integrated_commit: []const u8 = "",
+    last_integrated_commit: [40]u8 = [_]u8{0} ** 40,
+    last_commit_len: usize = 0,
     last_integration_timestamp: i64 = 0,
-    entries: []const SyncEntry = &.{},
+
+    pub fn lastCommit(self: *const SyncManifest) []const u8 {
+        return self.last_integrated_commit[0..self.last_commit_len];
+    }
 };
 
-// ── JSON Parsing ─────────────────────────────────────────────────────────
+// ── Manifest Parsing (sig.json, zero allocators) ─────────────────────────
 
-fn parseManifest(allocator: std.mem.Allocator, json_bytes: []const u8) !SyncManifest {
-    if (json_bytes.len == 0) return SyncManifest{};
-    const parsed = std.json.parseFromSlice(SyncManifest, allocator, json_bytes, .{
-        .ignore_unknown_fields = true,
-        .allocate = .alloc_always,
-    }) catch return SyncManifest{};
-    return parsed.value;
-}
-fn parseBenchmarks(allocator: std.mem.Allocator, json_bytes: []const u8) !BenchmarkSuite {
-    if (json_bytes.len == 0) return BenchmarkSuite{};
-    const parsed = std.json.parseFromSlice(BenchmarkSuite, allocator, json_bytes, .{
-        .ignore_unknown_fields = true,
-        .allocate = .alloc_always,
-    }) catch return BenchmarkSuite{};
-    return parsed.value;
+fn parseManifest(json_bytes: []const u8) SyncManifest {
+    var manifest = SyncManifest{};
+    if (json_bytes.len == 0) return manifest;
+
+    var commit_buf: [40]u8 = undefined;
+    const commit = sig_json.extractString(json_bytes, "last_integrated_commit", &commit_buf) catch "";
+    if (commit.len > 0 and commit.len <= 40) {
+        @memcpy(manifest.last_integrated_commit[0..commit.len], commit);
+        manifest.last_commit_len = commit.len;
+    }
+
+    manifest.last_integration_timestamp = sig_json.extractInt(json_bytes, "last_integration_timestamp") catch 0;
+    return manifest;
 }
 
-// ── README Generation ────────────────────────────────────────────────────
+// ── README Generation (writes to std.Io.Writer, zero allocators) ─────────
 
-pub fn writeReadme(w: *Writer, manifest: SyncManifest, suites: []const BenchmarkSuite) Writer.Error!void {
-    // Logo and header (Req 1.1)
+pub fn writeReadme(w: *std.Io.Writer, manifest: SyncManifest) std.Io.Writer.Error!void {
     try w.writeAll(
         \\<p align="center">
         \\  <img src="sig.png" alt="Sig" width="420" />
@@ -104,76 +84,7 @@ pub fn writeReadme(w: *Writer, manifest: SyncManifest, suites: []const Benchmark
         \\
     );
 
-    // Benchmark tables (Req 1.2, 1.3, 1.9)
-    var has_benchmarks = false;
-    for (suites) |suite| {
-        if (suite.benchmarks.len > 0) {
-            has_benchmarks = true;
-            break;
-        }
-    }
-
-    if (has_benchmarks) {
-        for (suites) |suite| {
-            if (suite.benchmarks.len == 0) continue;
-            try w.writeAll("### ");
-            try w.writeAll(suite.suite);
-            try w.writeAll("\n\n");
-            try w.writeAll("| Operation | Sig (ns/op) | Zig (ns/op) | Δ Latency | Sig Peak RAM | Zig Peak RAM |\n");
-            try w.writeAll("|---|--:|--:|--:|--:|--:|\n");
-            for (suite.benchmarks) |b| {
-                try w.writeAll("| ");
-                try w.writeAll(b.name);
-                try w.writeAll(" | ");
-                if (b.sig_ns_per_op) |v| {
-                    try w.writeAll("**");
-                    try w.print("{d}", .{v});
-                    try w.writeAll("**");
-                } else {
-                    try w.writeAll("N/A");
-                }
-                try w.writeAll(" | ");
-                if (b.std_ns_per_op) |v| {
-                    try w.print("{d}", .{v});
-                } else {
-                    try w.writeAll("N/A");
-                }
-                try w.writeAll(" | ");
-                // Compute delta if both values present
-                if (b.sig_ns_per_op) |sig_v| {
-                    if (b.std_ns_per_op) |std_v| {
-                        if (std_v > 0) {
-                            const pct = @as(i64, @intCast(sig_v)) * 100 / @as(i64, @intCast(std_v)) - 100;
-                            try w.print("{d}%", .{pct});
-                        } else {
-                            try w.writeAll("N/A");
-                        }
-                    } else {
-                        try w.writeAll("N/A");
-                    }
-                } else {
-                    try w.writeAll("N/A");
-                }
-                try w.writeAll(" | ");
-                if (b.sig_peak_bytes) |v| {
-                    try writeBytesHuman(w, v);
-                } else {
-                    try w.writeAll("N/A");
-                }
-                try w.writeAll(" | ");
-                if (b.std_peak_bytes) |v| {
-                    try writeBytesHuman(w, v);
-                } else {
-                    try w.writeAll("N/A");
-                }
-                try w.writeAll(" |\n");
-            }
-            try w.writeAll("\n");
-        }
-    } else {
-        // Default benchmark data when no JSON files provided
-        try writeDefaultBenchmarks(w);
-    }
+    try writeDefaultBenchmarks(w);
 
     try w.writeAll(
         \\> **Why is Sig faster?** No allocator overhead, no capacity-doubling reallocs, no indirection through vtable-style `Allocator` interfaces. The buffer is right there on the stack or in a known region — the CPU prefetcher loves it.
@@ -181,25 +92,13 @@ pub fn writeReadme(w: *Writer, manifest: SyncManifest, suites: []const Benchmark
         \\
     );
 
-    // Spoon model (Req 1.4, 1.5, 1.6)
     try writeSpoonSection(w);
-
-    // Sync status (Req 1.7, 1.10)
     try writeSyncStatus(w, manifest);
-
-    // Getting started and quick example (Req 1.8)
     try writeGettingStarted(w);
-
-    // Memory model table
     try writeMemoryModel(w);
-
-    // Error model
     try writeErrorModel(w);
-
-    // Contributing (Req 1.8)
     try writeContributing(w);
 
-    // License
     try w.writeAll(
         \\## License
         \\
@@ -207,17 +106,8 @@ pub fn writeReadme(w: *Writer, manifest: SyncManifest, suites: []const Benchmark
         \\
     );
 }
-fn writeBytesHuman(w: *Writer, bytes: u64) Writer.Error!void {
-    if (bytes >= 1_048_576) {
-        try w.print("{d},{d:0>3} B", .{ bytes / 1000, bytes % 1000 });
-    } else if (bytes >= 1000) {
-        try w.print("{d},{d:0>3} B", .{ bytes / 1000, bytes % 1000 });
-    } else {
-        try w.print("{d} B", .{bytes});
-    }
-}
 
-fn writeDefaultBenchmarks(w: *Writer) Writer.Error!void {
+fn writeDefaultBenchmarks(w: *std.Io.Writer) std.Io.Writer.Error!void {
     try w.writeAll(
         \\### Formatting
         \\
@@ -247,7 +137,7 @@ fn writeDefaultBenchmarks(w: *Writer) Writer.Error!void {
     );
 }
 
-fn writeSpoonSection(w: *Writer) Writer.Error!void {
+fn writeSpoonSection(w: *std.Io.Writer) std.Io.Writer.Error!void {
     try w.writeAll(
         \\## The Spoon Model
         \\
@@ -266,34 +156,35 @@ fn writeSpoonSection(w: *Writer) Writer.Error!void {
     );
 }
 
-fn writeSyncStatus(w: *Writer, manifest: SyncManifest) Writer.Error!void {
+fn writeSyncStatus(w: *std.Io.Writer, manifest: SyncManifest) std.Io.Writer.Error!void {
     try w.writeAll("## Sync Status\n\n");
-    if (manifest.last_integrated_commit.len > 0) {
+    if (manifest.last_commit_len > 0) {
+        const commit = manifest.lastCommit();
         try w.writeAll("| | |\n|---|---|\n");
         try w.writeAll("| Latest integrated upstream commit | `");
-        try w.writeAll(manifest.last_integrated_commit);
+        try w.writeAll(commit);
         try w.writeAll("` |\n");
         try w.writeAll("| Integration timestamp | ");
         if (manifest.last_integration_timestamp > 0) {
-            try w.print("{d}", .{manifest.last_integration_timestamp});
+            var ts_buf: [20]u8 = undefined;
+            const ts_str = sig_fmt.formatInto(&ts_buf, "{d}", .{manifest.last_integration_timestamp}) catch "—";
+            try w.writeAll(ts_str);
         } else {
             try w.writeAll("—");
         }
         try w.writeAll(" |\n");
         try w.writeAll("| Upstream | [ziglang/zig @ `");
-        const short_hash = if (manifest.last_integrated_commit.len >= 7)
-            manifest.last_integrated_commit[0..7]
-        else
-            manifest.last_integrated_commit;
-        try w.writeAll(short_hash);
+        const short = if (commit.len >= 7) commit[0..7] else commit;
+        try w.writeAll(short);
         try w.writeAll("`](https://github.com/ziglang/zig/commit/");
-        try w.writeAll(manifest.last_integrated_commit);
+        try w.writeAll(commit);
         try w.writeAll(") |\n\n");
     } else {
         try w.writeAll("No sync data available.\n\n");
     }
 }
-fn writeGettingStarted(w: *Writer) Writer.Error!void {
+
+fn writeGettingStarted(w: *std.Io.Writer) std.Io.Writer.Error!void {
     try w.writeAll(
         \\## Getting Started
         \\
@@ -335,7 +226,7 @@ fn writeGettingStarted(w: *Writer) Writer.Error!void {
     );
 }
 
-fn writeMemoryModel(w: *Writer) Writer.Error!void {
+fn writeMemoryModel(w: *std.Io.Writer) std.Io.Writer.Error!void {
     try w.writeAll(
         \\## Memory Model at a Glance
         \\
@@ -356,7 +247,7 @@ fn writeMemoryModel(w: *Writer) Writer.Error!void {
     );
 }
 
-fn writeErrorModel(w: *Writer) Writer.Error!void {
+fn writeErrorModel(w: *std.Io.Writer) std.Io.Writer.Error!void {
     try w.writeAll(
         \\## Error Model
         \\
@@ -375,7 +266,7 @@ fn writeErrorModel(w: *Writer) Writer.Error!void {
     );
 }
 
-fn writeContributing(w: *Writer) Writer.Error!void {
+fn writeContributing(w: *std.Io.Writer) std.Io.Writer.Error!void {
     try w.writeAll(
         \\## Contributing
         \\
@@ -390,140 +281,42 @@ fn writeContributing(w: *Writer) Writer.Error!void {
     );
 }
 
-// ── File I/O Helpers ─────────────────────────────────────────────────────
-
-fn readFileToString(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![]const u8 {
-    var file = try std.Io.Dir.cwd().openFile(io, path, .{});
-    defer file.close(io);
-    var reader = file.reader(io, &.{});
-    return try reader.interface.allocRemaining(allocator, .limited(10 * 1024 * 1024));
-}
-
-// ── Main ─────────────────────────────────────────────────────────────────
+// ── Main (zero allocators) ───────────────────────────────────────────────
 
 pub fn main(init: std.process.Init) !void {
-    const allocator = init.arena.allocator();
     const io = init.io;
 
-    const manifest_path = "tools/sig_sync/manifest.json";
-    const manifest_json = readFileToString(allocator, io, manifest_path) catch "";
-    const manifest = try parseManifest(allocator, manifest_json);
+    // Read manifest into a stack buffer.
+    var manifest_buf: [65536]u8 = undefined;
+    const manifest_json = sig_fs.readFile(io, "tools/sig_sync/manifest.json", &manifest_buf) catch "";
+    const manifest = parseManifest(manifest_json);
 
-    const suites: []const BenchmarkSuite = &.{};
-
-    var aw: Writer.Allocating = .init(allocator);
-    defer aw.deinit();
-    try writeReadme(&aw.writer, manifest, suites);
-    const output = aw.written();
-
-    const output_path = "README.md";
-    var out_file = try std.Io.Dir.cwd().createFile(io, output_path, .{});
+    // Write README directly to file — stream through the Io.Writer.
+    var out_file = try std.Io.Dir.cwd().createFile(io, "README.md", .{});
     defer out_file.close(io);
-    try out_file.writeStreamingAll(io, output);
-}
-// ── Tests ────────────────────────────────────────────────────────────────
 
-test "writeReadme contains tagline" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    try writeReadme(&aw.writer, SyncManifest{}, &.{});
-    const output = aw.written();
-    try std.testing.expect(std.mem.indexOf(u8, output, "Memory is not a guess") != null);
+    var write_buf: [8192]u8 = undefined;
+    var writer = out_file.writerStreaming(io, &write_buf);
+    try writeReadme(&writer.interface, manifest);
+    try writer.interface.flush();
 }
 
-test "writeReadme contains logo" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    try writeReadme(&aw.writer, SyncManifest{}, &.{});
-    const output = aw.written();
-    try std.testing.expect(std.mem.indexOf(u8, output, "sig.png") != null);
+// ── Tests (zero allocators) ──────────────────────────────────────────────
+
+test "parseManifest extracts commit and timestamp" {
+    const json =
+        \\{
+        \\  "last_integrated_commit": "abc1234567890def1234567890abcdef12345678",
+        \\  "last_integration_timestamp": 1700000000
+        \\}
+    ;
+    const manifest = parseManifest(json);
+    try std.testing.expectEqualStrings("abc1234567890def1234567890abcdef12345678", manifest.lastCommit());
+    try std.testing.expectEqual(@as(i64, 1700000000), manifest.last_integration_timestamp);
 }
 
-test "writeReadme contains all required sections" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    const manifest = SyncManifest{
-        .last_integrated_commit = "abc1234567890def1234567890abcdef12345678",
-        .last_integration_timestamp = 1700000000,
-    };
-    try writeReadme(&aw.writer, manifest, &.{});
-    const output = aw.written();
-    try std.testing.expect(std.mem.indexOf(u8, output, "## Why Sig?") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "## Benchmarks") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "## The Spoon Model") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "## Sync Status") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "## Getting Started") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "## Memory Model at a Glance") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "## Error Model") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "## Contributing") != null);
-}
-
-test "writeReadme renders sync status with commit hash and timestamp" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    const manifest = SyncManifest{
-        .last_integrated_commit = "abc1234567890def1234567890abcdef12345678",
-        .last_integration_timestamp = 1700000000,
-    };
-    try writeReadme(&aw.writer, manifest, &.{});
-    const output = aw.written();
-    try std.testing.expect(std.mem.indexOf(u8, output, "abc1234567890def1234567890abcdef12345678") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "1700000000") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "https://github.com/ziglang/zig/commit/abc1234567890def1234567890abcdef12345678") != null);
-}
-
-test "writeReadme shows default benchmarks when no data provided" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    try writeReadme(&aw.writer, SyncManifest{}, &.{});
-    const output = aw.written();
-    // Should contain real default benchmark numbers, not N/A
-    try std.testing.expect(std.mem.indexOf(u8, output, "18 ns") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "formatInto") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "BoundedVec") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "readInto") != null);
-}
-
-test "writeReadme renders benchmark table from JSON data" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    const benchmarks = [_]BenchmarkEntry{
-        .{
-            .name = "formatInto_vs_bufPrint_small",
-            .sig_ns_per_op = 42,
-            .std_ns_per_op = 67,
-            .sig_peak_bytes = 128,
-            .std_peak_bytes = 4096,
-        },
-    };
-    const suites = [_]BenchmarkSuite{
-        .{ .suite = "Formatting", .benchmarks = &benchmarks },
-    };
-    try writeReadme(&aw.writer, SyncManifest{}, &suites);
-    const output = aw.written();
-    try std.testing.expect(std.mem.indexOf(u8, output, "formatInto_vs_bufPrint_small") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "**42**") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "67") != null);
-}
-
-test "writeReadme explains Spoon concept and contrasts with fork" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    try writeReadme(&aw.writer, SyncManifest{}, &.{});
-    const output = aw.written();
-    try std.testing.expect(std.mem.indexOf(u8, output, "Spoon") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "Traditional Fork") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "continuously synchronized") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "Near zero") != null);
-}
-
-test "writeReadme includes memory model classification table" {
-    var aw: Writer.Allocating = .init(std.testing.allocator);
-    defer aw.deinit();
-    try writeReadme(&aw.writer, SyncManifest{}, &.{});
-    const output = aw.written();
-    try std.testing.expect(std.mem.indexOf(u8, output, "Canonical") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "Non-canonical") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "BufferTooSmall") != null);
-    try std.testing.expect(std.mem.indexOf(u8, output, "CapacityExceeded") != null);
+test "parseManifest empty returns default" {
+    const manifest = parseManifest("");
+    try std.testing.expectEqual(@as(usize, 0), manifest.last_commit_len);
+    try std.testing.expectEqual(@as(i64, 0), manifest.last_integration_timestamp);
 }

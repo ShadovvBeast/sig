@@ -10,6 +10,7 @@
 # -andrewrk
 
 .zig-cache/
+.kiro/
 zig-out/
 /release/
 /debug/
