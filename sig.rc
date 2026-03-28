@@ -19,7 +19,7 @@ BEGIN
             VALUE "FileDescription", "Sig Compiler — Strict Zig"
             VALUE "FileVersion", "0.16.0.0"
             VALUE "InternalName", "sig.exe"
-            VALUE "LegalCopyright", "Sig Contributors"
+            VALUE "LegalCopyright", "SB0 LTD"
             VALUE "OriginalFilename", "sig.exe"
             VALUE "ProductName", "Sig"
             VALUE "ProductVersion", "0.16.0.0"

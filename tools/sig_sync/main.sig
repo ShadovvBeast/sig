@@ -20,6 +20,23 @@ const MANIFEST_BUF_SIZE = 512 * 1024; // 512 KB for manifest JSON
 
 // ── Data Models (all inline, no pointers to heap) ────────────────────────
 
+pub const AiResolutionDetails = struct {
+    confidence: u8 = 0, // 0–100 integer
+    explanation_buf: [512]u8 = undefined,
+    explanation_len: usize = 0,
+    resolved_file_count: u8 = 0,
+
+    pub fn explanation(self: *const AiResolutionDetails) []const u8 {
+        return self.explanation_buf[0..self.explanation_len];
+    }
+
+    pub fn setExplanation(self: *AiResolutionDetails, text: []const u8) void {
+        const len = @min(text.len, 512);
+        @memcpy(self.explanation_buf[0..len], text[0..len]);
+        self.explanation_len = len;
+    }
+};
+
 pub const SyncEntry = struct {
     upstream_commit: [40]u8 = [_]u8{0} ** 40,
     commit_len: usize = 0,
@@ -28,8 +45,10 @@ pub const SyncEntry = struct {
     conflict_bufs: [MAX_CONFLICT_FILES][256]u8 = undefined,
     conflict_lens: [MAX_CONFLICT_FILES]usize = [_]usize{0} ** MAX_CONFLICT_FILES,
     conflict_count: usize = 0,
+    has_ai_details: bool = false,
+    ai_details: AiResolutionDetails = AiResolutionDetails{},
 
-    pub const Status = enum { integrated, conflict, skipped };
+    pub const Status = enum { integrated, conflict, skipped, ai_resolved };
 
     pub fn commit(self: *const SyncEntry) []const u8 {
         return self.upstream_commit[0..self.commit_len];
@@ -118,6 +137,8 @@ pub fn parseManifest(json_bytes: []const u8) SyncManifest {
             entry.status = .conflict;
         } else if (std.mem.eql(u8, status_str, "skipped")) {
             entry.status = .skipped;
+        } else if (std.mem.eql(u8, status_str, "ai_resolved")) {
+            entry.status = .ai_resolved;
         } else {
             entry.status = .integrated;
         }
@@ -187,6 +208,7 @@ pub fn serializeManifest(manifest: *const SyncManifest, buf: []u8) SigError![]co
             .integrated => "integrated",
             .conflict => "conflict",
             .skipped => "skipped",
+            .ai_resolved => "ai_resolved",
         });
 
         try w.objectField("conflicting_files");
@@ -430,6 +452,10 @@ pub fn runSync(io: std.Io, options: SyncOptions) !SyncManifest {
                 manifest.setLastCommit(entry.commit());
                 manifest.last_integration_timestamp = entry.timestamp;
             },
+            .ai_resolved => {
+                manifest.setLastCommit(entry.commit());
+                manifest.last_integration_timestamp = entry.timestamp;
+            },
             .conflict => {
                 halt = true;
             },
@@ -597,9 +623,13 @@ test "SyncEntry status values" {
     const integrated: SyncEntry.Status = .integrated;
     const conflict_status: SyncEntry.Status = .conflict;
     const skipped: SyncEntry.Status = .skipped;
+    const ai_resolved: SyncEntry.Status = .ai_resolved;
     try std.testing.expect(integrated != conflict_status);
     try std.testing.expect(integrated != skipped);
+    try std.testing.expect(integrated != ai_resolved);
     try std.testing.expect(conflict_status != skipped);
+    try std.testing.expect(conflict_status != ai_resolved);
+    try std.testing.expect(skipped != ai_resolved);
 }
 
 test "SyncManifest default values" {

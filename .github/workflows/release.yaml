@@ -29,6 +29,8 @@ jobs:
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Resolve version
         id: version
         run: |
@@ -41,13 +43,16 @@ jobs:
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           fi
           # Get the full zig version from git describe (same logic as build.zig)
+          # This already includes the zig commit hash (e.g. 0.16.0-dev.3036+aed7a6e1f)
           ZIG_BASE=$(grep -oP 'zig_version.*major = \K\d+' build.zig).$(grep -oP 'zig_version.*minor = \K\d+' build.zig).$(grep -oP 'zig_version.*patch = \K\d+' build.zig)
           GIT_DESC=$(git describe --match "*.*.*" --tags --abbrev=9 2>/dev/null || echo "${ZIG_BASE}")
-          # Build version: sig-{sig_ver}+zig{zig_desc}
-          VERSION="${SIG_VER}+zig${GIT_DESC}"
+          # Get short sig commit hash (HEAD of the sig branch)
+          SIG_HASH=$(git rev-parse --short=10 HEAD)
+          # Build version: {sig_ver}+zig{zig_desc}.sig.{sig_hash}
+          VERSION="${SIG_VER}+zig${GIT_DESC}.sig.${SIG_HASH}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "sig_version=${SIG_VER}" >> "$GITHUB_OUTPUT"
-          echo "Resolved: sig=${SIG_VER}, zig=${GIT_DESC}, full=${VERSION}"
+          echo "Resolved: sig=${SIG_VER}, zig=${GIT_DESC}, sig_hash=${SIG_HASH}, full=${VERSION}"
 
   build:
     needs: resolve-version
