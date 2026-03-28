@@ -12,9 +12,9 @@ const sig_fs = sig.fs;
 
 // ── Capacity Constants ───────────────────────────────────────────────────
 
-const MAX_ENTRIES = 1024;
+const MAX_ENTRIES = 64;
 const MAX_COMMITS = 256;
-const MAX_CONFLICT_FILES = 32;
+const MAX_CONFLICT_FILES = 8;
 const GIT_BUF_SIZE = 256 * 1024; // 256 KB for git stdout
 const MANIFEST_BUF_SIZE = 512 * 1024; // 512 KB for manifest JSON
 
