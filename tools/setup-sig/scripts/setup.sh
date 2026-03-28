@@ -35,21 +35,18 @@ resolve_version_from_manifest() {
 }
 
 resolve_latest_version() {
-  # Query GitHub API for latest release tag
+  # Query GitHub API for latest release tag (format: sig-{version})
   local tag
-  tag=$(curl -fsSL "${GITHUB_RELEASE_BASE}/latest" -o /dev/null -w '%{redirect_url}' 2>/dev/null \
-    | grep -oP 'v\K[^/]+$' || true)
-  if [ -z "$tag" ]; then
-    # Fallback: query API directly
-    tag=$(curl -fsSL "https://api.github.com/repos/ShadovvBeast/sig/releases/latest" \
-      | grep -oP '"tag_name":\s*"v?\K[^"]+' 2>/dev/null || true)
-  fi
+  tag=$(curl -fsSL "https://api.github.com/repos/ShadovvBeast/sig/releases/latest" \
+    | grep -oP '"tag_name":\s*"\K[^"]+' 2>/dev/null || true)
+  # Strip the sig- prefix to get the version
+  tag="${tag#sig-}"
   echo "$tag"
 }
 
 compute_download_url() {
   local version="$1" mirror="$2" triple="$3"
-  local base_url="${mirror:-${GITHUB_RELEASE_BASE}/download/v${version}}"
+  local base_url="${mirror:-${GITHUB_RELEASE_BASE}/download/sig-${version}}"
   echo "${base_url}/sig-${version}-${triple}.tar.xz"
 }
 

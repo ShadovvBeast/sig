@@ -40,7 +40,7 @@ function Resolve-LatestVersion {
     try {
         $response = Invoke-RestMethod -Uri "https://api.github.com/repos/ShadovvBeast/sig/releases/latest" `
             -Headers @{ 'User-Agent' = 'setup-sig' } -ErrorAction Stop
-        $tag = $response.tag_name -replace '^v', ''
+        $tag = $response.tag_name -replace '^sig-', ''
         return $tag
     } catch {
         Write-Output "::warning::Could not query latest release from GitHub API"
@@ -50,7 +50,7 @@ function Resolve-LatestVersion {
 
 function Get-DownloadUrl {
     param([string]$Ver, [string]$Mir, [string]$Triple)
-    $base = if ($Mir) { $Mir } else { "${GithubReleaseBase}/download/v${Ver}" }
+    $base = if ($Mir) { $Mir } else { "${GithubReleaseBase}/download/sig-${Ver}" }
     return "${base}/sig-${Ver}-${Triple}.zip"
 }
 

@@ -33,18 +33,21 @@ jobs:
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            SIG_VER="${{ inputs.version }}"
             echo "is_prerelease=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
           else
-            # Auto-release: derive version from zig version output or git
-            # Use short SHA + date for dev releases
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            DATE=$(date -u +%Y%m%d)
-            VERSION="0.0.1-dev.${DATE}+${SHORT_SHA}"
-            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            # Auto-release: use sig_version from build.zig
+            SIG_VER=$(grep -oP 'sig_version = "\K[^"]+' build.zig || echo "0.0.1-dev")
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "Resolved version: $(cat "$GITHUB_OUTPUT" | grep version)"
+          # Get the full zig version from git describe (same logic as build.zig)
+          ZIG_BASE=$(grep -oP 'zig_version.*major = \K\d+' build.zig).$(grep -oP 'zig_version.*minor = \K\d+' build.zig).$(grep -oP 'zig_version.*patch = \K\d+' build.zig)
+          GIT_DESC=$(git describe --match "*.*.*" --tags --abbrev=9 2>/dev/null || echo "${ZIG_BASE}")
+          # Build version: sig-{sig_ver}+zig{zig_desc}
+          VERSION="${SIG_VER}+zig${GIT_DESC}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sig_version=${SIG_VER}" >> "$GITHUB_OUTPUT"
+          echo "Resolved: sig=${SIG_VER}, zig=${GIT_DESC}, full=${VERSION}"
 
   build:
     needs: resolve-version
@@ -151,25 +154,19 @@ jobs:
           echo "=== sha256sums.txt ==="
           cat sha256sums.txt
 
-      - name: Delete previous master release (auto-release only)
-        if: needs.resolve-version.outputs.is_prerelease == 'true' && github.event_name != 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete master --yes --cleanup-tag 2>/dev/null || true
-
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd artifacts
-          # Use "master" tag for auto-releases, "v{VERSION}" for manual
+          # Tag format: sig-{version} — the sig- prefix prevents git describe *.*.*  matching
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="v${VERSION}"
-            TITLE="Sig v${VERSION}"
+            TAG="sig-${VERSION}"
+            TITLE="Sig ${VERSION}"
             PRERELEASE="${{ inputs.prerelease == 'true' && '--prerelease' || '' }}"
           else
-            TAG="master"
-            TITLE="Sig master (${VERSION})"
+            TAG="sig-${VERSION}"
+            TITLE="Sig ${VERSION}"
             PRERELEASE="--prerelease"
           fi
 
