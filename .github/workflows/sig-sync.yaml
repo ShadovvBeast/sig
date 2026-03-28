@@ -88,3 +88,12 @@ jobs:
             git commit -m "sig-sync: update manifest and README"
             git push origin HEAD:master
           fi
+
+      # [sig] Trigger release build after successful sync
+      - name: Trigger release
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/dispatches \
+            -f event_type=sig-release

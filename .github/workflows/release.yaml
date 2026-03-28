@@ -2,6 +2,10 @@
 name: release
 
 on:
+  # Auto-triggered by sig-sync after successful upstream merge
+  repository_dispatch:
+    types: [sig-release]
+  # Manual trigger for tagged releases
   workflow_dispatch:
     inputs:
       version:
@@ -17,11 +21,33 @@ on:
 permissions:
   contents: write
 
-env:
-  VERSION: ${{ inputs.version }}
-
 jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
+          else
+            # Auto-release: derive version from zig version output or git
+            # Use short SHA + date for dev releases
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            DATE=$(date -u +%Y%m%d)
+            VERSION="0.0.1-dev.${DATE}+${SHORT_SHA}"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved version: $(cat "$GITHUB_OUTPUT" | grep version)"
+
   build:
+    needs: resolve-version
     strategy:
       fail-fast: false
       matrix:
@@ -39,6 +65,8 @@ jobs:
             os: ubuntu-latest
             ext: zip
     runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -103,8 +131,10 @@ jobs:
             ${{ env.ARCHIVE }}.sha256
 
   release:
-    needs: build
+    needs: [resolve-version, build]
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -121,14 +151,31 @@ jobs:
           echo "=== sha256sums.txt ==="
           cat sha256sums.txt
 
+      - name: Delete previous master release (auto-release only)
+        if: needs.resolve-version.outputs.is_prerelease == 'true' && github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete master --yes --cleanup-tag 2>/dev/null || true
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd artifacts
-          gh release create "v${VERSION}" \
-            --title "Sig v${VERSION}" \
-            --notes "Sig v${VERSION} — Strict Zig compiler release.
+          # Use "master" tag for auto-releases, "v{VERSION}" for manual
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="v${VERSION}"
+            TITLE="Sig v${VERSION}"
+            PRERELEASE="${{ inputs.prerelease == 'true' && '--prerelease' || '' }}"
+          else
+            TAG="master"
+            TITLE="Sig master (${VERSION})"
+            PRERELEASE="--prerelease"
+          fi
+
+          gh release create "${TAG}" \
+            --title "${TITLE}" \
+            --notes "Sig ${VERSION} — Strict Zig compiler release.
 
           ## Downloads
 
@@ -140,5 +187,5 @@ jobs:
           | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
 
           Checksums are in \`sha256sums.txt\`." \
-            ${{ inputs.prerelease && '--prerelease' || '' }} \
+            ${PRERELEASE} \
             sig-*.tar.xz sig-*.zip sha256sums.txt
