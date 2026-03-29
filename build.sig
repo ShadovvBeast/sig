@@ -1004,13 +1004,13 @@ fn addCmakeCfgOptionsToExe(
             },
             .windows => {
                 if (target_result.abi != .msvc) {
-                    // [sig] On MinGW, link system libstdc++ (not zig's libc++) since
+                    // [sig] On MinGW, link system libstdc++ and GCC runtime libs since
                     // LLVM/Clang/LLD were built with GCC's libstdc++.
-                    // Use addCxxKnownPath to find the actual .a file via the C++ compiler.
                     addCxxKnownPath(b, cfg, exe, b.fmt("lib{s}.a", .{cfg.system_libcxx}), null, false) catch {
-                        // Fallback: try linking as system library
-                        mod.linkSystemLibrary(cfg.system_libcxx, .{});
+                        mod.link_libcpp = true;
                     };
+                    addCxxKnownPath(b, cfg, exe, "libgcc_eh.a", null, false) catch {};
+                    addCxxKnownPath(b, cfg, exe, "libgcc.a", null, false) catch {};
                 }
             },
             .freebsd => {
