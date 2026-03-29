@@ -1,7 +1,7 @@
-// The Zig compiler is not intended to be consumed as a package.
+// The Sig compiler is not intended to be consumed as a package.
 // The sole purpose of this manifest file is to test the compiler.
 .{
-    .name = .zig,
+    .name = .sig,
     .version = "0.0.0",
     .dependencies = .{
         .standalone_test_cases = .{
@@ -12,5 +12,5 @@
         },
     },
     .paths = .{""},
-    .fingerprint = 0xc1ce108124179e16,
+    .fingerprint = 0xce1f2b0ecf7021bc,
 }

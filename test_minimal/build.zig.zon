@@ -1,0 +1,6 @@
+.{
+    .name = .test_pkg,
+    .version = "0.0.0",
+    .paths = .{""},
+    .fingerprint = 0x87122b12b8bd2cac,
+}

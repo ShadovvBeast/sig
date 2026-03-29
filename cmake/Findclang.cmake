@@ -73,6 +73,8 @@ endif()
 
 if (MSVC)
   set(CLANG_LIBRARIES ${CLANG_LIBRARIES} "version.lib")
+elseif(MINGW)
+  set(CLANG_LIBRARIES ${CLANG_LIBRARIES} "-lversion")
 endif()
 
 include(FindPackageHandleStandardArgs)

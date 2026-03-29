@@ -917,9 +917,16 @@ fn addCompilerStep(b: *std.Build, options: AddCompilerModOptions) *std.Build.Ste
     exe.stack_size = stack_size;
 
     // [sig] Embed Sig icon and version info on Windows.
-    exe.root_module.addWin32ResourceFile(.{
-        .file = b.path("sig.rc"),
-    });
+    // Guard: win32 resource compilation is not available during cmake bootstrap (zig2).
+    if (options.target.result.os.tag == .windows) {
+        if (b.option(bool, "no-win32-res", "Skip win32 resource embedding (used during bootstrap)") orelse false) {
+            // Skip — bootstrap mode
+        } else {
+            exe.root_module.addWin32ResourceFile(.{
+                .file = b.path("sig.rc"),
+            });
+        }
+    }
 
     const function_data_sections = options.target.result.cpu.arch.isArm() or options.target.result.cpu.arch.isPowerPC();
 
@@ -996,7 +1003,15 @@ fn addCmakeCfgOptionsToExe(
                 mod.link_libcpp = true;
             },
             .windows => {
-                if (target_result.abi != .msvc) mod.link_libcpp = true;
+                if (target_result.abi != .msvc) {
+                    // [sig] On MinGW, link system libstdc++ (not zig's libc++) since
+                    // LLVM/Clang/LLD were built with GCC's libstdc++.
+                    // Use addCxxKnownPath to find the actual .a file via the C++ compiler.
+                    addCxxKnownPath(b, cfg, exe, b.fmt("lib{s}.a", .{cfg.system_libcxx}), null, false) catch {
+                        // Fallback: try linking as system library
+                        mod.linkSystemLibrary(cfg.system_libcxx, .{});
+                    };
+                }
             },
             .freebsd => {
                 try addCxxKnownPath(b, cfg, exe, b.fmt("libc++.{s}", .{lib_suffix}), null, need_cpp_includes);

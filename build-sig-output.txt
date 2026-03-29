@@ -1,0 +1,626 @@
+install
++- install sig
+   +- compile exe sig ReleaseFast native 145 errors
+error: lld-link: undefined symbol: std::__throw_length_error(char const*)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLDLinkCOFF)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLDLinkELF)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLDLinkWasm)
+    note: referenced 3253 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_replace(unsigned long long, unsigned long long, char const*, unsigned long long)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMCreateTargetMachine)
+    note: referenced by libzigcpp.a(zig_clang_driver.cpp.obj):(SetBackdoorDriverOutputsFromEnvVars(clang::driver::Driver&))
+    note: referenced by libzigcpp.a(zig_clang_driver.cpp.obj):(SetBackdoorDriverOutputsFromEnvVars(clang::driver::Driver&))
+    note: referenced 1332 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_create(unsigned long long&, unsigned long long)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMCreateTargetMachine)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced by libzigcpp.a(zig_clang_driver.cpp.obj):(GetExecutablePath[abi:cxx11](char const*, bool))
+    note: referenced 3830 more times
+error: lld-link: undefined symbol: std::__throw_logic_error(char const*)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMCreateTargetMachine)
+    note: referenced by libzigcpp.a(zig_clang_driver.cpp.obj):(.text)
+    note: referenced by libzigcpp.a(zig_clang_driver.cpp.obj):(clang_main(int, char**, llvm::ToolContext const&) (.constprop.0))
+    note: referenced 1064 more times
+error: lld-link: undefined symbol: std::_V2::system_category()
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced 307 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_construct(unsigned long long, char)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced 646 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_append(char const*, unsigned long long)
+    note: referenced by libzigcpp.a(zig_llvm.cpp.obj):(ZigLLVMTargetMachineEmitToFile)
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(performOperation(ArchiveOperation))
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(performOperation(ArchiveOperation))
+    note: referenced 4175 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_assign(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&)
+    note: referenced by libzigcpp.a(zig_clang_driver.cpp.obj):(clang_main(int, char**, llvm::ToolContext const&) (.constprop.0))
+    note: referenced by libzigcpp.a(zig_clang_driver.cpp.obj):(clang_main(int, char**, llvm::ToolContext const&) (.constprop.0))
+    note: referenced by libLLVMTarget.a(TargetMachineC.cpp.obj):(.text$LLVMCreateTargetMachineWithOptions)
+    note: referenced 1132 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::append(char const*)
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(matchFlagWithArg(llvm::StringRef, char const* const*&, llvm::ArrayRef<char const*>))
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(ar_main(int, char**))
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(ar_main(int, char**))
+    note: referenced 586 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::basic_string(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&&)
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(matchFlagWithArg(llvm::StringRef, char const* const*&, llvm::ArrayRef<char const*>))
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(ar_main(int, char**))
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(ar_main(int, char**))
+    note: referenced 1171 more times
+error: lld-link: undefined symbol: std::_V2::generic_category()
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(performOperation(ArchiveOperation))
+    note: referenced by libLLVMAMDGPUCodeGen.a(AMDGPUTargetMachine.cpp.obj):(llvm::CodeGenPassBuilder<llvm::AMDGPUCodeGenPassBuilder, llvm::GCNTargetMachine>::buildPipeline(llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>&, llvm::raw_pwrite_stream&, llvm::raw_pwrite_stream*, llvm::CodeGenFileType) const)
+    note: referenced by libLLVMAMDGPUCodeGen.a(AMDGPUTargetMachine.cpp.obj):(llvm::CodeGenPassBuilder<llvm::AMDGPUCodeGenPassBuilder, llvm::GCNTargetMachine>::buildPipeline(llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>&, llvm::raw_pwrite_stream&, llvm::raw_pwrite_stream*, llvm::CodeGenFileType) const)
+    note: referenced 543 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::reserve(unsigned long long)
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(performOperation(ArchiveOperation))
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(performOperation(ArchiveOperation))
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(performOperation(ArchiveOperation))
+    note: referenced 806 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_replace_aux(unsigned long long, unsigned long long, unsigned long long, char)
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(ar_main(int, char**))
+    note: referenced by libLLVMWebAssemblyCodeGen.a(WebAssemblyAsmPrinter.cpp.obj):(.text$_ZN4llvm21WebAssemblyAsmPrinter11regToStringB5cxx11ERKNS_14MachineOperandE)
+    note: referenced by libLLVMSupport.a(Program.cpp.obj):(.text$_ZN4llvm3sys25flattenWindowsCommandLineB5cxx11ENS_8ArrayRefINS_9StringRefEEE)
+    note: referenced 87 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_dispose()
+    note: referenced by libzigcpp.a(zig_llvm-ar.cpp.obj):(ar_main(int, char**))
+    note: referenced by libLLVMRISCVAsmParser.a(RISCVAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_114RISCVAsmParser20parseDirectiveOptionEv)
+    note: referenced by libLLVMRISCVAsmParser.a(RISCVAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_114RISCVAsmParser20parseDirectiveOptionEv)
+    note: referenced 5951 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_mutate(unsigned long long, unsigned long long, char const*, unsigned long long)
+    note: referenced by libLLVMCore.a(Core.cpp.obj):(.text$LLVMSetModuleInlineAsm2)
+    note: referenced by libLLVMCore.a(Core.cpp.obj):(.text$LLVMSetModuleInlineAsm)
+    note: referenced by libLLVMCore.a(Core.cpp.obj):(.text$LLVMAppendModuleInlineAsm)
+    note: referenced 298 more times
+error: lld-link: undefined symbol: std::__throw_bad_array_new_length()
+    note: referenced by libLLVMCore.a(Core.cpp.obj):(llvm::SmallVectorTemplateBase<llvm::OperandBundleDefT<llvm::Value*>, false>::push_back(llvm::OperandBundleDefT<llvm::Value*> const&))
+    note: referenced by libLLVMARMAsmParser.a(ARMAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112ARMAsmParser20MatchInstructionImplERKN4llvm15SmallVectorImplISt10unique_ptrINS1_18MCParsedAsmOperandESt14default_deleteIS4_EEEERNS1_6MCInstEPNS2_INS1_12NearMissInfoEEEbj.constprop.0)
+    note: referenced by libLLVMPowerPCAsmParser.a(PPCAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112PPCAsmParser23matchAndEmitInstructionEN4llvm5SMLocERjRNS1_15SmallVectorImplISt10unique_ptrINS1_18MCParsedAsmOperandESt14default_deleteIS6_EEEERNS1_10MCStreamerERyb)
+    note: referenced 903 more times
+error: lld-link: undefined symbol: std::__throw_bad_function_call()
+    note: referenced by libLLVMRISCVCodeGen.a(RISCVTargetMachine.cpp.obj):(.text$_ZN4llvm2cl3optIPFPNS_12FunctionPassEvELb0ENS_18RegisterPassParserIN12_GLOBAL__N_119RVVRegisterRegAllocEEEE16handleOccurrenceEjNS_9StringRefESB_)
+    note: referenced by libLLVMRISCVCodeGen.a(RISCVTargetMachine.cpp.obj):(llvm::cl::opt<llvm::cl::boolOrDefault, false, llvm::cl::parser<llvm::cl::boolOrDefault>>::handleOccurrence(unsigned int, llvm::StringRef, llvm::StringRef))
+    note: referenced by libLLVMARMCodeGen.a(ARMTargetMachine.cpp.obj)
+    note: referenced 845 more times
+error: lld-link: undefined symbol: std::__throw_out_of_range_fmt(char const*, ...)
+    note: referenced by libLLVMRISCVDesc.a(RISCVMCTargetDesc.cpp.obj):(.text$_ZNK12_GLOBAL__N_120RISCVMCInstrAnalysis14evaluateBranchERKN4llvm6MCInstEyyRy)
+    note: referenced by libLLVMRISCVDesc.a(RISCVMCTargetDesc.cpp.obj):(.text$_ZN12_GLOBAL__N_120RISCVMCInstrAnalysis11updateStateERKN4llvm6MCInstEy)
+    note: referenced by libLLVMAnalysis.a(TargetLibraryInfo.cpp.obj):(.text$_ZN4llvm21TargetLibraryAnalysis3runERKNS_8FunctionERNS_15AnalysisManagerIS1_JEEE)
+    note: referenced 79 more times
+error: lld-link: undefined symbol: std::_Rb_tree_increment(std::_Rb_tree_node_base*)
+    note: referenced by libLLVMRISCVCodeGen.a(RISCVAsmPrinter.cpp.obj):(.text$_ZN12_GLOBAL__N_115RISCVAsmPrinter26EmitHwasanMemaccessSymbolsERN4llvm6ModuleE.isra.0)
+    note: referenced by libLLVMRISCVCodeGen.a(RISCVAsmPrinter.cpp.obj):(.text$_ZN12_GLOBAL__N_115RISCVAsmPrinter15emitInstructionEPKN4llvm12MachineInstrE)
+    note: referenced by libLLVMARMAsmParser.a(ARMAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112ARMAsmParser23matchAndEmitInstructionEN4llvm5SMLocERjRNS1_15SmallVectorImplISt10unique_ptrINS1_18MCParsedAsmOperandESt14default_deleteIS6_EEEERNS1_10MCStreamerERyb)
+    note: referenced 807 more times
+error: lld-link: undefined symbol: std::_Rb_tree_decrement(std::_Rb_tree_node_base*)
+    note: referenced by libLLVMRISCVCodeGen.a(RISCVAsmPrinter.cpp.obj):(.text$_ZN12_GLOBAL__N_115RISCVAsmPrinter15emitInstructionEPKN4llvm12MachineInstrE)
+    note: referenced by libLLVMRISCVCodeGen.a(RISCVAsmPrinter.cpp.obj):(std::_Rb_tree<std::tuple<unsigned int, unsigned int>, std::pair<std::tuple<unsigned int, unsigned int> const, llvm::MCSymbol*>, std::_Select1st<std::pair<std::tuple<unsigned int, unsigned int> const, llvm::MCSymbol*>>, std::less<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<std::tuple<unsigned int, unsigned int> const, llvm::MCSymbol*>>>::_M_get_insert_unique_pos(std::tuple<unsigned int, unsigned int> const&))
+    note: referenced by libLLVMARMAsmParser.a(ARMAsmParser.cpp.obj):(std::_Rb_tree<llvm::FeatureBitset, llvm::FeatureBitset, std::_Identity<llvm::FeatureBitset>, std::less<llvm::FeatureBitset>, std::allocator<llvm::FeatureBitset>>::_M_get_insert_unique_pos(llvm::FeatureBitset const&))
+    note: referenced 1085 more times
+error: lld-link: undefined symbol: std::_Rb_tree_insert_and_rebalance(bool, std::_Rb_tree_node_base*, std::_Rb_tree_node_base*, std::_Rb_tree_node_base&)
+    note: referenced by libLLVMRISCVCodeGen.a(RISCVAsmPrinter.cpp.obj):(.text$_ZN12_GLOBAL__N_115RISCVAsmPrinter15emitInstructionEPKN4llvm12MachineInstrE)
+    note: referenced by libLLVMARMAsmParser.a(ARMAsmParser.cpp.obj):(std::_Rb_tree_iterator<std::pair<unsigned int const, unsigned int>> std::_Rb_tree<unsigned int, std::pair<unsigned int const, unsigned int>, std::_Select1st<std::pair<unsigned int const, unsigned int>>, std::less<unsigned int>, std::allocator<std::pair<unsigned int const, unsigned int>>>::_M_emplace_equal<std::pair<unsigned int, unsigned int>>(std::pair<unsigned int, unsigned int>&&))
+    note: referenced by libLLVMARMAsmParser.a(ARMAsmParser.cpp.obj):(_ZNSt8_Rb_treeIN4llvm13FeatureBitsetES1_St9_IdentityIS1_ESt4lessIS1_ESaIS1_EE22_M_insert_range_uniqueISt13move_iteratorIPS1_EEENSt9enable_ifIXsrSt7is_sameIS1_NSt15iterator_traitsIT_E10value_typeEE5valueEvE4typeESF_SF_)
+    note: referenced 823 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::basic_string(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&)
+    note: referenced by libLLVMRISCVAsmParser.a(RISCVAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_114RISCVAsmParser20parseDirectiveOptionEv)
+    note: referenced by libLLVMRISCVAsmParser.a(RISCVAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_114RISCVAsmParser20parseDirectiveOptionEv)
+    note: referenced by libLLVMPasses.a(PassBuilderPipelines.cpp.obj):(.text$_ZN4llvm11PassBuilder17addPGOInstrPassesERNS_11PassManagerINS_6ModuleENS_15AnalysisManagerIS2_JEEEJEEENS_17OptimizationLevelEbbbNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESD_NS_18IntrusiveRefCntPtrINS_3vfs10FileSystemEEE)
+    note: referenced 494 more times
+error: lld-link: undefined symbol: std::_Rb_tree_increment(std::_Rb_tree_node_base const*)
+    note: referenced by libLLVMMipsCodeGen.a(MipsAsmPrinter.cpp.obj):(.text$_ZN4llvm14MipsAsmPrinter16emitEndOfAsmFileERNS_6ModuleE)
+    note: referenced by libLLVMMipsCodeGen.a(MipsAsmPrinter.cpp.obj):(.text$_ZN4llvm14MipsAsmPrinter20runOnMachineFunctionERNS_15MachineFunctionE)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVAsmPrinter.cpp.obj):(.text$_ZN12_GLOBAL__N_115SPIRVAsmPrinter24outputGlobalRequirementsEv.constprop.0)
+    note: referenced 734 more times
+error: lld-link: undefined symbol: std::chrono::_V2::steady_clock::now()
+    note: referenced by libLLVMPowerPCCodeGen.a(PPCAsmPrinter.cpp.obj):(.text$_ZN12_GLOBAL__N_116PPCAIXAsmPrinter16doInitializationERN4llvm6ModuleE)
+    note: referenced by libLLVMSupport.a(TimeProfiler.cpp.obj):(.text$_ZN4llvm27timeTraceProfilerInitializeEjNS_9StringRefEb)
+    note: referenced by libLLVMSupport.a(TimeProfiler.cpp.obj):(.text$_ZN4llvm22timeTraceProfilerBeginENS_9StringRefENS_12function_refIFNS_17TimeTraceMetadataEvEEE)
+    note: referenced 7 more times
+error: lld-link: undefined symbol: std::ios_base::ios_base()
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced 28 more times
+error: lld-link: undefined symbol: std::basic_ios<char, std::char_traits<char>>::init(std::basic_streambuf<char, std::char_traits<char>>*)
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced 72 more times
+error: lld-link: undefined symbol: std::locale::locale()
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced by libLLVMCodeGen.a(MachinePipeliner.cpp.obj):(.text$_ZNK4llvm16LoopCarriedEdges4dumpEPNS_5SUnitEPKNS_18TargetRegisterInfoEPKNS_19MachineRegisterInfoE)
+    note: referenced 32 more times
+error: lld-link: undefined symbol: std::basic_ostream<char, std::char_traits<char>>& std::__ostream_insert<char, std::char_traits<char>>(std::basic_ostream<char, std::char_traits<char>>&, char const*, long long)
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced by libLLVMCodeGen.a(MachinePipeliner.cpp.obj):(.text$_ZNK4llvm16LoopCarriedEdges4dumpEPNS_5SUnitEPKNS_18TargetRegisterInfoEPKNS_19MachineRegisterInfoE)
+    note: referenced 139 more times
+error: lld-link: undefined symbol: std::ostream& std::ostream::_M_insert<unsigned long>(unsigned long)
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMCodeGen.a(MachinePipeliner.cpp.obj):(.text$_ZNK4llvm16LoopCarriedEdges4dumpEPNS_5SUnitEPKNS_18TargetRegisterInfoEPKNS_19MachineRegisterInfoE)
+    note: referenced by libLLVMCodeGen.a(MachinePipeliner.cpp.obj):(.text$_ZNK4llvm16LoopCarriedEdges4dumpEPNS_5SUnitEPKNS_18TargetRegisterInfoEPKNS_19MachineRegisterInfoE)
+    note: referenced 13 more times
+error: lld-link: undefined symbol: std::locale::~locale()
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced 51 more times
+error: lld-link: undefined symbol: std::ios_base::~ios_base()
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.text$_ZNK4llvm15NVPTXAsmPrinter15emitImplicitDefEPKNS_12MachineInstrE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced 30 more times
+error: lld-link: undefined symbol: vtable for std::__cxx11::basic_stringbuf<char, std::char_traits<char>, std::allocator<char>>
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.refptr._ZTVNSt7__cxx1115basic_stringbufIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj)
+    note: referenced by libLLVMCodeGen.a(MachinePipeliner.cpp.obj)
+error: lld-link: undefined symbol: vtable for std::basic_streambuf<char, std::char_traits<char>>
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.refptr._ZTVSt15basic_streambufIcSt11char_traitsIcEE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj)
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj)
+error: lld-link: undefined symbol: VTT for std::__cxx11::basic_stringstream<char, std::char_traits<char>, std::allocator<char>>
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.refptr._ZTTNSt7__cxx1118basic_stringstreamIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libLLVMWebAssemblyAsmParser.a(WebAssemblyAsmTypeCheck.cpp.obj)
+    note: referenced by libLLVMipo.a(MemProfContextDisambiguation.cpp.obj)
+error: lld-link: undefined symbol: vtable for std::basic_ios<char, std::char_traits<char>>
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.refptr._ZTVSt9basic_iosIcSt11char_traitsIcEE)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj)
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj)
+error: lld-link: undefined symbol: vtable for std::__cxx11::basic_stringstream<char, std::char_traits<char>, std::allocator<char>>
+    note: referenced by libLLVMNVPTXCodeGen.a(NVPTXAsmPrinter.cpp.obj):(.refptr._ZTVNSt7__cxx1118basic_stringstreamIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libLLVMWebAssemblyAsmParser.a(WebAssemblyAsmTypeCheck.cpp.obj)
+    note: referenced by libLLVMipo.a(MemProfContextDisambiguation.cpp.obj)
+error: lld-link: undefined symbol: std::_Hash_bytes(void const*, unsigned long long, unsigned long long)
+    note: referenced by libLLVMHexagonDesc.a(HexagonMCTargetDesc.cpp.obj):(.text$_ZN4llvm10Hexagon_MC16getArchSubtargetEPKNS_15MCSubtargetInfoE)
+    note: referenced by libLLVMHexagonDesc.a(HexagonMCTargetDesc.cpp.obj):(std::__detail::_Map_base<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const, std::unique_ptr<llvm::MCSubtargetInfo const, std::default_delete<llvm::MCSubtargetInfo const>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const, std::unique_ptr<llvm::MCSubtargetInfo const, std::default_delete<llvm::MCSubtargetInfo const>>>>, std::__detail::_Select1st, std::equal_to<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::hash<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true>, true>::operator[](std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&&))
+    note: referenced by libLLVMPasses.a(PassBuilder.cpp.obj):(.text$_ZN4llvmL15shortenFileNameERNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEh.constprop.0)
+    note: referenced 11 more times
+error: lld-link: undefined symbol: std::__throw_system_error(int)
+    note: referenced by libLLVMHexagonDesc.a(HexagonMCTargetDesc.cpp.obj):(.text$_ZN4llvm10Hexagon_MC16getArchSubtargetEPKNS_15MCSubtargetInfoE)
+    note: referenced by libLLVMHexagonDesc.a(HexagonMCTargetDesc.cpp.obj):(.text$_ZN4llvm10Hexagon_MC16addArchSubtargetEPKNS_15MCSubtargetInfoENS_9StringRefE)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEE17_M_complete_asyncEv)
+    note: referenced 129 more times
+error: lld-link: undefined symbol: std::__detail::_Prime_rehash_policy::_M_need_rehash(unsigned long long, unsigned long long, unsigned long long) const
+    note: referenced by libLLVMHexagonDesc.a(HexagonMCTargetDesc.cpp.obj):(std::__detail::_Map_base<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const, std::unique_ptr<llvm::MCSubtargetInfo const, std::default_delete<llvm::MCSubtargetInfo const>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const, std::unique_ptr<llvm::MCSubtargetInfo const, std::default_delete<llvm::MCSubtargetInfo const>>>>, std::__detail::_Select1st, std::equal_to<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::hash<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true>, true>::operator[](std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&&))
+    note: referenced by libLLVMPasses.a(StandardInstrumentations.cpp.obj):(.text$_ZN4llvm20DotCfgChangeReporter21handleFunctionCompareENS_9StringRefES1_S1_S1_bjRKNS_9FuncDataTINS_6DCDataEEES6_)
+    note: referenced by libLLVMPasses.a(StandardInstrumentations.cpp.obj):(.text$_ZN4llvm20DotCfgChangeReporter21handleFunctionCompareENS_9StringRefES1_S1_S1_bjRKNS_9FuncDataTINS_6DCDataEEES6_)
+    note: referenced 74 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_erase(unsigned long long, unsigned long long)
+    note: referenced by libLLVMHexagonAsmParser.a(HexagonAsmParser.cpp.obj):(void llvm::erase_if<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, bool (*)(char)>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&, bool (*)(char)))
+    note: referenced by libLLVMPasses.a(PassBuilder.cpp.obj):(llvm::DOTGraphTraits<llvm::DOTFuncInfo*>::eraseComment(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&, unsigned int&, unsigned int))
+    note: referenced by libLLVMWebAssemblyCodeGen.a(WebAssemblyLowerEmscriptenEHSjLj.cpp.obj)
+    note: referenced 33 more times
+error: lld-link: undefined symbol: std::ostream& std::ostream::_M_insert<long long>(long long)
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.text$_ZN12_GLOBAL__N_112AVRAsmParser26validateTargetOperandClassERN4llvm18MCParsedAsmOperandEj)
+    note: referenced by libLLVMHexagonDesc.a(HexagonAsmBackend.cpp.obj):(.text$_ZNK12_GLOBAL__N_117HexagonAsmBackend16HandleFixupErrorEiixPKc.constprop.0)
+    note: referenced by libLLVMHexagonDesc.a(HexagonAsmBackend.cpp.obj):(.text$_ZNK12_GLOBAL__N_117HexagonAsmBackend16HandleFixupErrorEiixPKc.constprop.0)
+    note: referenced 2 more times
+error: lld-link: undefined symbol: VTT for std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char>>
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.refptr._ZTTNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libLLVMCodeGen.a(MachinePipeliner.cpp.obj)
+    note: referenced by libLLVMMCParser.a(AsmParser.cpp.obj)
+error: lld-link: undefined symbol: vtable for std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char>>
+    note: referenced by libLLVMAVRAsmParser.a(AVRAsmParser.cpp.obj):(.refptr._ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libLLVMCodeGen.a(MachinePipeliner.cpp.obj)
+    note: referenced by libLLVMMCParser.a(AsmParser.cpp.obj)
+error: lld-link: undefined symbol: std::__detail::_List_node_base::_M_hook(std::__detail::_List_node_base*)
+    note: referenced by libLLVMCore.a(PassManager.cpp.obj):(llvm::AnalysisManager<llvm::Module>::getResultImpl(llvm::AnalysisKey*, llvm::Module&))
+    note: referenced by libLLVMCore.a(PassManager.cpp.obj):(llvm::AnalysisManager<llvm::Function>::getResultImpl(llvm::AnalysisKey*, llvm::Function&))
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZN3lld4coff12LinkerDriver11enqueueTaskESt8functionIFvvEE)
+    note: referenced 224 more times
+error: lld-link: undefined symbol: std::__detail::_List_node_base::_M_unhook()
+    note: referenced by libLLVMCore.a(PassManager.cpp.obj):(llvm::AnalysisManager<llvm::Function>::invalidate(llvm::Function&, llvm::PreservedAnalyses const&))
+    note: referenced by libLLVMCore.a(PassManager.cpp.obj):(llvm::AnalysisManager<llvm::Module>::invalidate(llvm::Module&, llvm::PreservedAnalyses const&))
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZN3lld4coff12LinkerDriver3runEv)
+    note: referenced 100 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::find(char, unsigned long long) const
+    note: referenced by libLLVMSupport.a(SpecialCaseList.cpp.obj):(.text$_ZN4llvm15SpecialCaseList7Matcher6insertENS_9StringRefEjb)
+    note: referenced by libLLVMDlltoolDriver.a(DlltoolDriver.cpp.obj):(.text$_ZN4llvm17dlltoolDriverMainENS_8ArrayRefIPKcEE)
+    note: referenced by libLLVMCore.a(AsmWriter.cpp.obj):(.text$_ZNK4llvm6Module5printERNS_11raw_ostreamEPNS_24AssemblyAnnotationWriterEbb)
+    note: referenced 27 more times
+error: lld-link: undefined symbol: std::_Sp_make_shared_tag::_S_eq(std::type_info const&)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt23_Sp_counted_ptr_inplaceINSt13__future_base17_Async_state_implINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISJ_EESt10error_codeEEESaIvELN9__gnu_cxx12_Lock_policyE2EE14_M_get_deleterERKSt9type_info)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt23_Sp_counted_ptr_inplaceINSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISJ_EESt10error_codeEEESaIvELN9__gnu_cxx12_Lock_policyE2EE14_M_get_deleterERKSt9type_info)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(std::_Sp_counted_ptr_inplace<std::future<std::pair<std::unique_ptr<llvm::MemoryBuffer, std::default_delete<llvm::MemoryBuffer>>, std::error_code>>, std::allocator<void>, (__gnu_cxx::_Lock_policy)2>::_M_get_deleter(std::type_info const&))
+    note: referenced 57 more times
+error: lld-link: undefined symbol: std::thread::_State::~_State()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJMNSt13__future_base17_Async_state_implINS1_IS2_IJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISJ_EESt10error_codeEEEFvvEPSP_EEEEED2Ev)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJMNSt13__future_base17_Async_state_implINS1_IS2_IJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISJ_EESt10error_codeEEEFvvEPSP_EEEEED0Ev)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj):(std::thread::_State_impl<std::thread::_Invoker<std::tuple<void (std::__future_base::_Async_state_impl<std::thread::_Invoker<std::tuple<std::function<void ()>>>, void>::*)(), std::__future_base::_Async_state_impl<std::thread::_Invoker<std::tuple<std::function<void ()>>>, void>*>>>::~_State_impl())
+    note: referenced 5 more times
+error: lld-link: undefined symbol: __emutls_get_address
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEE17_M_complete_asyncEv)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEE17_M_complete_asyncEv)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base17_Async_state_implINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEE6_M_runEv)
+    note: referenced 124 more times
+error: lld-link: undefined symbol: std::condition_variable::~condition_variable()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt23_Sp_counted_ptr_inplaceINSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISJ_EESt10error_codeEEESaIvELN9__gnu_cxx12_Lock_policyE2EE10_M_disposeEv)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEED2Ev)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEED0Ev)
+    note: referenced 19 more times
+error: lld-link: undefined symbol: std::__future_base::_Result_base::~_Result_base()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt23_Sp_counted_ptr_inplaceINSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISJ_EESt10error_codeEEESaIvELN9__gnu_cxx12_Lock_policyE2EE10_M_disposeEv)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEED2Ev)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEED0Ev)
+    note: referenced 9 more times
+error: lld-link: undefined symbol: std::condition_variable::notify_all()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base15_Deferred_stateINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEE17_M_complete_asyncEv)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base17_Async_state_implINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEE6_M_runEv)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj):(std::__future_base::_Deferred_state<std::thread::_Invoker<std::tuple<std::function<void ()>>>, void>::_M_complete_async())
+    note: referenced 9 more times
+error: lld-link: undefined symbol: std::__throw_future_error(int)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base17_Async_state_implINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEE6_M_runEv)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZSt5asyncIZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_JEESt6futureINSt15__invoke_resultINSt5decayIT_E4typeEJDpNSB_IT0_E4typeEEE4typeEESt6launchOSC_DpOSF_.constprop.0)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZSt5asyncIZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_JEESt6futureINSt15__invoke_resultINSt5decayIT_E4typeEJDpNSB_IT0_E4typeEEE4typeEESt6launchOSC_DpOSF_.constprop.0)
+    note: referenced 10 more times
+error: lld-link: undefined symbol: std::thread::join()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt23_Sp_counted_ptr_inplaceINSt13__future_base17_Async_state_implINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISJ_EESt10error_codeEEESaIvELN9__gnu_cxx12_Lock_policyE2EE10_M_disposeEv)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base17_Async_state_implINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEED2Ev)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt13__future_base17_Async_state_implINSt6thread8_InvokerISt5tupleIJZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_EEEESt4pairISt10unique_ptrIN4llvm12MemoryBufferESt14default_deleteISI_EESt10error_codeEED0Ev)
+    note: referenced 5 more times
+error: lld-link: undefined symbol: std::condition_variable::condition_variable()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZSt5asyncIZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_JEESt6futureINSt15__invoke_resultINSt5decayIT_E4typeEJDpNSB_IT0_E4typeEEE4typeEESt6launchOSC_DpOSF_.constprop.0)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj):(std::shared_future<void> llvm::ThreadPoolInterface::asyncImpl<void>(std::function<void ()>, llvm::ThreadPoolTaskGroup*))
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel9TaskGroupC2Ev)
+    note: referenced 7 more times
+error: lld-link: undefined symbol: std::__future_base::_Result_base::_Result_base()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZSt5asyncIZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_JEESt6futureINSt15__invoke_resultINSt5decayIT_E4typeEJDpNSB_IT0_E4typeEEE4typeEESt6launchOSC_DpOSF_.constprop.0)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj):(std::shared_future<void> llvm::ThreadPoolInterface::asyncImpl<void>(std::function<void ()>, llvm::ThreadPoolTaskGroup*))
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutor7Creator4callEv)
+    note: referenced 1 more times
+error: lld-link: undefined symbol: std::thread::_M_start_thread(std::unique_ptr<std::thread::_State, std::default_delete<std::thread::_State>>, void (*)())
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZSt5asyncIZN3lld4coffL19createFutureForFileENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEEUlvE_JEESt6futureINSt15__invoke_resultINSt5decayIT_E4typeEJDpNSB_IT0_E4typeEEE4typeEESt6launchOSC_DpOSF_.constprop.0)
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorC4ENS3_18ThreadPoolStrategyEEUlvE_EEEEE6_M_runEv)
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorC4ENS3_18ThreadPoolStrategyEEUlvE_EEEEE6_M_runEv)
+    note: referenced 1 more times
+error: lld-link: undefined symbol: std::condition_variable::wait(std::unique_lock<std::mutex>&)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt17_Function_handlerIFvvEZN3lld4coff12LinkerDriver20enqueueArchiveMemberERKN4llvm6object7Archive5ChildERKNS6_6SymbolENS4_9StringRefEEUlvE1_E9_M_invokeERKSt9_Any_data)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZZN3lld4coff12LinkerDriver11enqueuePathEN4llvm9StringRefEbbENKUlvE_clEv)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj):(std::_Function_handler<void (), std::shared_future<void> llvm::ThreadPoolInterface::asyncImpl<void>(std::function<void ()>, llvm::ThreadPoolTaskGroup*)::'lambda'()>::_M_invoke(std::_Any_data const&))
+    note: referenced 7 more times
+error: lld-link: undefined symbol: std::__exception_ptr::exception_ptr::_M_addref()
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt17_Function_handlerIFvvEZN3lld4coff12LinkerDriver20enqueueArchiveMemberERKN4llvm6object7Archive5ChildERKNS6_6SymbolENS4_9StringRefEEUlvE1_E9_M_invokeERKSt9_Any_data)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZZN3lld4coff12LinkerDriver11enqueuePathEN4llvm9StringRefEbbENKUlvE_clEv)
+error: lld-link: undefined symbol: std::rethrow_exception(std::__exception_ptr::exception_ptr)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZNSt17_Function_handlerIFvvEZN3lld4coff12LinkerDriver20enqueueArchiveMemberERKN4llvm6object7Archive5ChildERKNS6_6SymbolENS4_9StringRefEEUlvE1_E9_M_invokeERKSt9_Any_data)
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.text$_ZZN3lld4coff12LinkerDriver11enqueuePathEN4llvm9StringRefEbbENKUlvE_clEv)
+error: lld-link: undefined symbol: __once_proxy
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.refptr.__once_proxy)
+    note: referenced by libLLVMSupport.a(Timer.cpp.obj)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj)
+error: lld-link: undefined symbol: __emutls_v._ZSt11__once_call
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.refptr.__emutls_v._ZSt11__once_call)
+    note: referenced by libLLVMSupport.a(Timer.cpp.obj)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj)
+error: lld-link: undefined symbol: __emutls_v._ZSt15__once_callable
+    note: referenced by liblldCOFF.a(Driver.cpp.obj):(.refptr.__emutls_v._ZSt15__once_callable)
+    note: referenced by libLLVMSupport.a(Timer.cpp.obj)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj)
+error: lld-link: undefined symbol: std::chrono::_V2::system_clock::now()
+    note: referenced by libLLVMObject.a(ArchiveWriter.cpp.obj):(.text$_ZL22writeSymbolTableHeaderRN4llvm11raw_ostreamENS_6object7Archive4KindEbyyy)
+    note: referenced by libLLVMObject.a(ArchiveWriter.cpp.obj):(.text$_ZL22writeSymbolTableHeaderRN4llvm11raw_ostreamENS_6object7Archive4KindEbyyy)
+    note: referenced by libLLVMObject.a(ArchiveWriter.cpp.obj):(.text$_ZL22writeSymbolTableHeaderRN4llvm11raw_ostreamENS_6object7Archive4KindEbyyy)
+    note: referenced 11 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::swap(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&)
+    note: referenced by libLLVMSupport.a(TimeProfiler.cpp.obj):(void std::__introsort_loop<__gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, long long, __gnu_cxx::__ops::_Iter_comp_iter<llvm::TimeTraceProfiler::write(llvm::raw_pwrite_stream&)::'lambda1'(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&)>>(__gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, __gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, long long, __gnu_cxx::__ops::_Iter_comp_iter<llvm::TimeTraceProfiler::write(llvm::raw_pwrite_stream&)::'lambda1'(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&)>))
+    note: referenced by libLLVMSupport.a(TimeProfiler.cpp.obj):(void std::__introsort_loop<__gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, long long, __gnu_cxx::__ops::_Iter_comp_iter<llvm::TimeTraceProfiler::write(llvm::raw_pwrite_stream&)::'lambda1'(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&)>>(__gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, __gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, long long, __gnu_cxx::__ops::_Iter_comp_iter<llvm::TimeTraceProfiler::write(llvm::raw_pwrite_stream&)::'lambda1'(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&)>))
+    note: referenced by libLLVMSupport.a(TimeProfiler.cpp.obj):(void std::__introsort_loop<__gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, long long, __gnu_cxx::__ops::_Iter_comp_iter<llvm::TimeTraceProfiler::write(llvm::raw_pwrite_stream&)::'lambda1'(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&)>>(__gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, __gnu_cxx::__normal_iterator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>*, std::vector<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>>>>>, long long, __gnu_cxx::__ops::_Iter_comp_iter<llvm::TimeTraceProfiler::write(llvm::raw_pwrite_stream&)::'lambda1'(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, std::pair<unsigned long long, std::chrono::duration<long long, std::ratio<1ll, 1000000000ll>>>> const&)>))
+    note: referenced 93 more times
+error: lld-link: undefined symbol: std::__throw_out_of_range(char const*)
+    note: referenced by libLLVMPasses.a(StandardInstrumentations.cpp.obj):(.text$_ZN4llvm20DotCfgChangeReporter21handleFunctionCompareENS_9StringRefES1_S1_S1_bjRKNS_9FuncDataTINS_6DCDataEEES6_)
+    note: referenced by libLLVMPowerPCCodeGen.a(PPCISelDAGToDAG.cpp.obj):(.text$_ZN12_GLOBAL__N_115PPCDAGToDAGISel6SelectEPN4llvm6SDNodeE)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.text$_ZL18lowerPtrAnnotationPN4llvm13IntrinsicInstE)
+    note: referenced 21 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::resize(unsigned long long, char)
+    note: referenced by libLLVMPasses.a(PassBuilder.cpp.obj):(.text$_ZN4llvmL15shortenFileNameERNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEh.constprop.0)
+    note: referenced by libLLVMPasses.a(PassBuilder.cpp.obj):(.text$_ZN4llvmL15shortenFileNameERNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEh.constprop.0)
+    note: referenced by libLLVMCodeGen.a(TargetLoweringObjectFileImpl.cpp.obj):(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> llvm::encodeBase64<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&))
+    note: referenced 94 more times
+error: lld-link: undefined symbol: std::_V2::error_category::~error_category()
+    note: referenced by libLLVMSupport.a(Error.cpp.obj):(.text$_ZN12_GLOBAL__N_118ErrorErrorCategoryD2Ev)
+    note: referenced by libLLVMSupport.a(Error.cpp.obj):(.text$__tcf_0)
+    note: referenced by libLLVMSupport.a(Error.cpp.obj):(.text$_ZN12_GLOBAL__N_118ErrorErrorCategoryD0Ev)
+    note: referenced 39 more times
+error: lld-link: undefined symbol: std::_V2::error_category::_M_message[abi:cxx11](int) const
+    note: referenced by libLLVMSupport.a(Error.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_118ErrorErrorCategoryE)
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_124BitcodeErrorCategoryTypeE)
+    note: referenced by libLLVMProfileData.a(InstrProf.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_126InstrProfErrorCategoryTypeE)
+    note: referenced 11 more times
+error: lld-link: undefined symbol: std::_V2::error_category::default_error_condition(int) const
+    note: referenced by libLLVMSupport.a(Error.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_118ErrorErrorCategoryE)
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_124BitcodeErrorCategoryTypeE)
+    note: referenced by libLLVMProfileData.a(InstrProf.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_126InstrProfErrorCategoryTypeE)
+    note: referenced 11 more times
+error: lld-link: undefined symbol: std::_V2::error_category::equivalent(int, std::error_condition const&) const
+    note: referenced by libLLVMSupport.a(Error.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_118ErrorErrorCategoryE)
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_124BitcodeErrorCategoryTypeE)
+    note: referenced by libLLVMProfileData.a(InstrProf.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_126InstrProfErrorCategoryTypeE)
+    note: referenced 11 more times
+error: lld-link: undefined symbol: std::_V2::error_category::equivalent(std::error_code const&, int) const
+    note: referenced by libLLVMSupport.a(Error.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_118ErrorErrorCategoryE)
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_124BitcodeErrorCategoryTypeE)
+    note: referenced by libLLVMProfileData.a(InstrProf.cpp.obj):(.rdata$_ZTVN12_GLOBAL__N_126InstrProfErrorCategoryTypeE)
+    note: referenced 11 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::_M_create(unsigned long long&, unsigned long long)
+    note: referenced by libLLVMSupport.a(Program.cpp.obj):(.text$_ZNSt7__cxx1112basic_stringIwSt11char_traitsIwESaIwEE12_M_constructIPwEEvT_S7_St20forward_iterator_tag.isra.0)
+    note: referenced by libLLVMWindowsDriver.a(MSVCPaths.cpp.obj):(.text$_ZL19readFullStringValueP6HKEY__PKcRNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE)
+error: lld-link: undefined symbol: std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::reserve(unsigned long long)
+    note: referenced by libLLVMSupport.a(Program.cpp.obj):(.text$_ZN4llvm3sys17findProgramByNameB5cxx11ENS_9StringRefENS_8ArrayRefIS1_EE)
+error: lld-link: undefined symbol: std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::_M_replace(unsigned long long, unsigned long long, wchar_t const*, unsigned long long)
+    note: referenced by libLLVMSupport.a(Program.cpp.obj):(.text$_ZN4llvm3sys17findProgramByNameB5cxx11ENS_9StringRefENS_8ArrayRefIS1_EE)
+error: lld-link: undefined symbol: std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::_M_mutate(unsigned long long, unsigned long long, wchar_t const*, unsigned long long)
+    note: referenced by libLLVMSupport.a(Program.cpp.obj):(.text$_ZN4llvm3sys17findProgramByNameB5cxx11ENS_9StringRefENS_8ArrayRefIS1_EE)
+error: lld-link: undefined symbol: std::_Rb_tree_rebalance_for_erase(std::_Rb_tree_node_base*, std::_Rb_tree_node_base&)
+    note: referenced by libclangDriver.a(Driver.cpp.obj):(.text$_ZN12_GLOBAL__N_123OffloadingActionBuilder21CudaActionBuilderBase10initializeEv)
+    note: referenced by libLLVMCodeGen.a(RegAllocGreedy.cpp.obj):(.text$_ZN4llvm8RAGreedy12computeStatsERNS_17MachineBasicBlockE)
+    note: referenced by libLLVMCodeGen.a(RegAllocGreedy.cpp.obj):(.text$_ZN4llvm8RAGreedy23tryLastChanceRecoloringERKNS_12LiveIntervalERNS_15AllocationOrderERNS_15SmallVectorImplINS_8RegisterEEERNS_8SmallSetIS7_Lj16ESt4lessIS7_EEERNS_11SmallVectorISt4pairIPS2_NS_10MCRegisterEELj8EEEj.part.0)
+    note: referenced 121 more times
+error: lld-link: undefined symbol: std::basic_filebuf<char, std::char_traits<char>>::basic_filebuf()
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj):(.text$_ZN5clang20LayoutOverrideSourceC2EN4llvm9StringRefE)
+    note: referenced by libclangCrossTU.a(CrossTranslationUnit.cpp.obj):(.text$_ZN5clang8cross_tu17parseCrossTUIndexB5cxx11EN4llvm9StringRefE)
+error: lld-link: undefined symbol: std::basic_filebuf<char, std::char_traits<char>>::open(char const*, std::_Ios_Openmode)
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj):(.text$_ZN5clang20LayoutOverrideSourceC2EN4llvm9StringRefE)
+    note: referenced by libclangCrossTU.a(CrossTranslationUnit.cpp.obj):(.text$_ZN5clang8cross_tu17parseCrossTUIndexB5cxx11EN4llvm9StringRefE)
+error: lld-link: undefined symbol: std::basic_ios<char, std::char_traits<char>>::clear(std::_Ios_Iostate)
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libLLVMAArch64CodeGen.a(AArch64LowerHomogeneousPrologEpilog.cpp.obj):(.text$_ZL22getOrCreateFrameHelperPN4llvm6ModuleEPNS_17MachineModuleInfoERNS_15SmallVectorImplIjEE15FrameHelperTypej)
+    note: referenced 8 more times
+error: lld-link: undefined symbol: std::__basic_file<char>::is_open() const
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj):(.text$_ZN5clang20LayoutOverrideSourceC2EN4llvm9StringRefE)
+error: lld-link: undefined symbol: std::basic_istream<char, std::char_traits<char>>& std::getline<char, std::char_traits<char>, std::allocator<char>>(std::basic_istream<char, std::char_traits<char>>&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&, char)
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libLLVMSystemZDesc.a(SystemZHLASMAsmStreamer.cpp.obj):(.text$_ZN4llvm23SystemZHLASMAsmStreamer7EmitEOLEv)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj):(.text$_ZN5clang20LayoutOverrideSourceC2EN4llvm9StringRefE)
+    note: referenced 1 more times
+error: lld-link: undefined symbol: std::basic_filebuf<char, std::char_traits<char>>::close()
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj):(.text$_ZN5clang20LayoutOverrideSourceC2EN4llvm9StringRefE)
+    note: referenced by libclangCrossTU.a(CrossTranslationUnit.cpp.obj):(.text$_ZN5clang8cross_tu17parseCrossTUIndexB5cxx11EN4llvm9StringRefE)
+error: lld-link: undefined symbol: std::__basic_file<char>::~__basic_file()
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj):(.text$_ZN5clang20LayoutOverrideSourceC2EN4llvm9StringRefE)
+    note: referenced by libclangCrossTU.a(CrossTranslationUnit.cpp.obj):(.text$_ZN5clang8cross_tu17parseCrossTUIndexB5cxx11EN4llvm9StringRefE)
+error: lld-link: undefined symbol: std::ctype<char>::_M_widen_init() const
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE7isctypeEcNS1_10_RegexMaskE.isra.0)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> std::__cxx11::regex_traits<char>::lookup_collatename<char const*>(char const*, char const*) const)
+    note: referenced 7 more times
+error: lld-link: undefined symbol: std::__throw_bad_cast()
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.text$_ZN5clang18CompilerInvocation13ParseLangArgsERNS_11LangOptionsERN4llvm3opt7ArgListENS_9InputKindERKNS3_6TripleERSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaISH_EERNS_17DiagnosticsEngineE)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE7isctypeEcNS1_10_RegexMaskE.isra.0)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::_Function_handler<bool (char), std::__detail::_CharMatcher<std::__cxx11::regex_traits<char>, true, true>>::_M_invoke(std::_Any_data const&, char&&))
+    note: referenced 38 more times
+error: lld-link: undefined symbol: vtable for std::basic_filebuf<char, std::char_traits<char>>
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.refptr._ZTVSt13basic_filebufIcSt11char_traitsIcEE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj)
+    note: referenced by libclangCrossTU.a(CrossTranslationUnit.cpp.obj)
+error: lld-link: undefined symbol: vtable for std::basic_ifstream<char, std::char_traits<char>>
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.refptr._ZTVSt14basic_ifstreamIcSt11char_traitsIcEE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj)
+    note: referenced by libclangCrossTU.a(CrossTranslationUnit.cpp.obj)
+error: lld-link: undefined symbol: VTT for std::basic_ifstream<char, std::char_traits<char>>
+    note: referenced by libclangFrontend.a(CompilerInvocation.cpp.obj):(.refptr._ZTTSt14basic_ifstreamIcSt11char_traitsIcEE)
+    note: referenced by libclangFrontend.a(LayoutOverrideSource.cpp.obj)
+    note: referenced by libclangCrossTU.a(CrossTranslationUnit.cpp.obj)
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::rfind(char, unsigned long long) const
+    note: referenced by libclangDriver.a(ToolChain.cpp.obj):(.text$_ZN5clang6driver9ToolChain31getTargetAndModeFromProgramNameEN4llvm9StringRefE)
+    note: referenced by libLLVMAsmPrinter.a(CodeViewDebug.cpp.obj):(.text$_ZN4llvm13CodeViewDebug15getFullFilepathEPKNS_6DIFileE)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVBuiltins.cpp.obj):(.text$_ZN4llvm5SPIRV23lookupBuiltinNameHelperB5cxx11ENS_9StringRefEPNS_14FPDecorationIdE)
+    note: referenced 2 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::append(char const*, unsigned long long)
+    note: referenced by libLLVMCore.a(Intrinsics.cpp.obj):(.text$_ZL17getMangledTypeStrPN4llvm4TypeERb)
+    note: referenced by libclangDriver.a(Clang.cpp.obj):(.text$_ZNK5clang6driver5tools5Clang12ConstructJobERNS0_11CompilationERKNS0_9JobActionERKNS0_9InputInfoERKN4llvm11SmallVectorIS8_Lj4EEERKNSB_3opt7ArgListEPKc)
+    note: referenced by libLLVMipo.a(AttributorAttributes.cpp.obj):(.text$_ZNK12_GLOBAL__N_120AAAssumptionInfoImpl8getAsStrEPN4llvm10AttributorE)
+    note: referenced 53 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::find(char const*, unsigned long long, unsigned long long) const
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.text$_ZN4llvm31isBitcodeContainingObjCCategoryENS_15MemoryBufferRefE)
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.text$_ZN4llvm31isBitcodeContainingObjCCategoryENS_15MemoryBufferRefE)
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.text$_ZN4llvm31isBitcodeContainingObjCCategoryENS_15MemoryBufferRefE)
+    note: referenced 79 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::insert(unsigned long long, char const*)
+    note: referenced by libLLVMBitReader.a(BitcodeReader.cpp.obj):(.text$_ZN12_GLOBAL__N_113BitcodeReader17parseFunctionBodyEPN4llvm8FunctionE)
+error: lld-link: undefined symbol: std::__detail::_List_node_base::_M_transfer(std::__detail::_List_node_base*, std::__detail::_List_node_base*)
+    note: referenced by libLLVMCodeGen.a(MachineScheduler.cpp.obj):(void std::__cxx11::list<std::pair<long long, long long>, std::allocator<std::pair<long long, long long>>>::sort<bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)>(bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)))
+    note: referenced by libLLVMCodeGen.a(MachineScheduler.cpp.obj):(void std::__cxx11::list<std::pair<long long, long long>, std::allocator<std::pair<long long, long long>>>::sort<bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)>(bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)))
+    note: referenced by libLLVMCodeGen.a(MachineScheduler.cpp.obj):(void std::__cxx11::list<std::pair<long long, long long>, std::allocator<std::pair<long long, long long>>>::sort<bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)>(bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)))
+    note: referenced 22 more times
+error: lld-link: undefined symbol: std::__detail::_List_node_base::swap(std::__detail::_List_node_base&, std::__detail::_List_node_base&)
+    note: referenced by libLLVMCodeGen.a(MachineScheduler.cpp.obj):(void std::__cxx11::list<std::pair<long long, long long>, std::allocator<std::pair<long long, long long>>>::sort<bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)>(bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)))
+    note: referenced by libLLVMCodeGen.a(MachineScheduler.cpp.obj):(void std::__cxx11::list<std::pair<long long, long long>, std::allocator<std::pair<long long, long long>>>::sort<bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)>(bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)))
+    note: referenced by libLLVMCodeGen.a(MachineScheduler.cpp.obj):(void std::__cxx11::list<std::pair<long long, long long>, std::allocator<std::pair<long long, long long>>>::sort<bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)>(bool (*)(std::pair<long long, long long> const&, std::pair<long long, long long> const&)))
+    note: referenced 10 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::find_last_not_of(char, unsigned long long) const
+    note: referenced by libLLVMSupport.a(SourceMgr.cpp.obj):(.text$_ZNK4llvm12SMDiagnostic5printEPKcRNS_11raw_ostreamEbbb)
+    note: referenced by libLLVMSupport.a(ScaledNumber.cpp.obj):(.text$_ZL18stripTrailingZerosRKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libclangAST.a(RawCommentList.cpp.obj):(.text$_ZNK5clang10RawComment16getFormattedTextB5cxx11ERKNS_13SourceManagerERNS_17DiagnosticsEngineE)
+error: lld-link: undefined symbol: std::__throw_invalid_argument(char const*)
+    note: referenced by libLLVMPowerPCCodeGen.a(PPCISelDAGToDAG.cpp.obj):(.text$_ZN12_GLOBAL__N_115PPCDAGToDAGISel6SelectEPN4llvm6SDNodeE)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.text$_ZL18lowerPtrAnnotationPN4llvm13IntrinsicInstE)
+    note: referenced by libLLVMBPFCodeGen.a(BPFAbstractMemberAccess.cpp.obj):(.text$_ZN4llvm27BPFAbstractMemberAccessPass3runERNS_8FunctionERNS_15AnalysisManagerIS1_JEEE)
+    note: referenced 4 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_S_copy_chars(char*, char const*, char const*)
+    note: referenced by libLLVMSupport.a(Threading.cpp.obj):(llvm::ReportLastErrorFatal(char const*))
+    note: referenced by libLLVMCodeGen.a(MLRegAllocPriorityAdvisor.cpp.obj):(.text$_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1IS3_EEPKcRKS3_.isra.0)
+error: lld-link: undefined symbol: std::__detail::_Prime_rehash_policy::_M_next_bkt(unsigned long long) const
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVStructurizer.cpp.obj):(.text$_ZN12_GLOBAL__N_117SPIRVStructurizer14fixupConstructERNS0_8SplitterEPNS0_18DivergentConstructE.isra.0)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVStructurizer.cpp.obj):(.text$_ZN12_GLOBAL__N_117SPIRVStructurizer14fixupConstructERNS0_8SplitterEPNS0_18DivergentConstructE.isra.0)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVModuleAnalysis.cpp.obj):(.text$_Z20addInstrRequirementsRKN4llvm12MachineInstrERNS_5SPIRV18RequirementHandlerERKNS_14SPIRVSubtargetE)
+    note: referenced 6 more times
+error: lld-link: undefined symbol: std::locale::id::_M_id() const
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE7isctypeEcNS1_10_RegexMaskE.isra.0)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::_Function_handler<bool (char), std::__detail::_CharMatcher<std::__cxx11::regex_traits<char>, true, true>>::_M_invoke(std::_Any_data const&, char&&))
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::_Function_handler<bool (char), std::__detail::_CharMatcher<std::__cxx11::regex_traits<char>, true, false>>::_M_invoke(std::_Any_data const&, char&&))
+    note: referenced 53 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_stringbuf<char, std::char_traits<char>, std::allocator<char>>::_M_sync(char*, unsigned long long, unsigned long long)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE5valueEci.isra.0)
+    note: referenced by libLLVMSystemZDesc.a(SystemZHLASMAsmStreamer.cpp.obj):(.text$_ZN4llvm23SystemZHLASMAsmStreamer7EmitEOLEv)
+    note: referenced by liblldCommon.a(ErrorHandler.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE5valueEci.isra.0)
+    note: referenced 2 more times
+error: lld-link: undefined symbol: std::istream& std::istream::_M_extract<long>(long&)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE5valueEci.isra.0)
+    note: referenced by liblldCommon.a(ErrorHandler.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE5valueEci.isra.0)
+    note: referenced by libclangDriver.a(HLSL.cpp.obj):(.text$_ZNKSt7__cxx1112regex_traitsIcE5valueEci.isra.0)
+    note: referenced 1 more times
+error: lld-link: undefined symbol: std::__throw_regex_error(std::regex_constants::error_type)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Scanner<char>::_M_eat_escape_ecma())
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Scanner<char>::_M_eat_escape_awk())
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Scanner<char>::_M_eat_escape_posix())
+    note: referenced 12 more times
+error: lld-link: undefined symbol: std::locale::locale(std::locale const&)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Executor<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>, std::__cxx11::regex_traits<char>, false>::_M_is_line_terminator(char) const)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Executor<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>, std::__cxx11::regex_traits<char>, false>::_M_handle_backref(std::__detail::_Executor<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>, std::__cxx11::regex_traits<char>, false>::_Match_mode, long))
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Executor<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>, std::__cxx11::regex_traits<char>, true>::_M_is_line_terminator(char) const)
+    note: referenced 9 more times
+error: lld-link: undefined symbol: std::locale::operator=(std::locale const&)
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Compiler<std::__cxx11::regex_traits<char>>::_Compiler(char const*, char const*, std::locale const&, std::regex_constants::syntax_option_type))
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(std::__detail::_Compiler<std::__cxx11::regex_traits<char>>::_Compiler(char const*, char const*, std::locale const&, std::regex_constants::syntax_option_type))
+    note: referenced by liblldCommon.a(ErrorHandler.cpp.obj)
+error: lld-link: undefined symbol: std::__cxx11::collate<char>::id
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.refptr._ZNSt7__cxx117collateIcE2idE)
+    note: referenced by liblldCommon.a(ErrorHandler.cpp.obj)
+    note: referenced by libclangDriver.a(HLSL.cpp.obj)
+error: lld-link: undefined symbol: vtable for std::__cxx11::basic_istringstream<char, std::char_traits<char>, std::allocator<char>>
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.refptr._ZTVNSt7__cxx1119basic_istringstreamIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libLLVMSystemZDesc.a(SystemZHLASMAsmStreamer.cpp.obj)
+    note: referenced by liblldCommon.a(ErrorHandler.cpp.obj)
+error: lld-link: undefined symbol: VTT for std::__cxx11::basic_istringstream<char, std::char_traits<char>, std::allocator<char>>
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.refptr._ZTTNSt7__cxx1119basic_istringstreamIcSt11char_traitsIcESaIcEEE)
+    note: referenced by libLLVMSystemZDesc.a(SystemZHLASMAsmStreamer.cpp.obj)
+    note: referenced by liblldCommon.a(ErrorHandler.cpp.obj)
+error: lld-link: undefined symbol: std::ctype<char>::id
+    note: referenced by libLLVMSPIRVCodeGen.a(SPIRVPrepareFunctions.cpp.obj):(.refptr._ZNSt5ctypeIcE2idE)
+    note: referenced by liblldCommon.a(ErrorHandler.cpp.obj)
+    note: referenced by libclangDriver.a(HLSL.cpp.obj)
+error: lld-link: undefined symbol: std::__cxx11::basic_stringstream<char, std::char_traits<char>, std::allocator<char>>::basic_stringstream()
+    note: referenced by libLLVMHexagonDesc.a(HexagonAsmBackend.cpp.obj):(.text$_ZNK12_GLOBAL__N_117HexagonAsmBackend16HandleFixupErrorEiixPKc.constprop.0)
+error: lld-link: undefined symbol: std::basic_ostream<char, std::char_traits<char>>& std::operator<<<std::char_traits<char>>(std::basic_ostream<char, std::char_traits<char>>&, char const*)
+    note: referenced by libLLVMHexagonDesc.a(HexagonAsmBackend.cpp.obj):(.text$_ZNK12_GLOBAL__N_117HexagonAsmBackend16HandleFixupErrorEiixPKc.constprop.0)
+    note: referenced by libLLVMHexagonDesc.a(HexagonAsmBackend.cpp.obj):(.text$_ZNK12_GLOBAL__N_117HexagonAsmBackend16HandleFixupErrorEiixPKc.constprop.0)
+    note: referenced by libLLVMHexagonDesc.a(HexagonAsmBackend.cpp.obj):(.text$_ZNK12_GLOBAL__N_117HexagonAsmBackend16HandleFixupErrorEiixPKc.constprop.0)
+    note: referenced 41 more times
+error: lld-link: undefined symbol: std::_Rb_tree_decrement(std::_Rb_tree_node_base const*)
+    note: referenced by libLLVMScalarOpts.a(LoopStrengthReduce.cpp.obj):(.text$_ZN12_GLOBAL__N_111LSRInstance31GenerateCrossUseConstantOffsetsEv)
+    note: referenced by libLLVMScalarOpts.a(LoopStrengthReduce.cpp.obj):(.text$_ZN12_GLOBAL__N_111LSRInstance31GenerateCrossUseConstantOffsetsEv)
+    note: referenced by libLLVMCodeGen.a(LiveInterval.cpp.obj):(.text$_ZN12_GLOBAL__N_121CalcLiveRangeUtilBaseINS_20CalcLiveRangeUtilSetESt23_Rb_tree_const_iteratorIN4llvm9LiveRange7SegmentEESt3setIS5_St4lessIS5_ESaIS5_EEE13createDeadDefENS3_9SlotIndexEPNS3_20BumpPtrAllocatorImplINS3_15MallocAllocatorELy4096ELy4096ELy128EEEPNS3_6VNInfoE)
+    note: referenced 15 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::find_first_of(char const*, unsigned long long, unsigned long long) const
+    note: referenced by libLLVMProfileData.a(InstrProf.cpp.obj):(.text$_ZN4llvm21getPGOFuncNameVarNameB5cxx11ENS_9StringRefENS_11GlobalValue12LinkageTypesE)
+error: lld-link: undefined symbol: std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::resize(unsigned long long, wchar_t)
+    note: referenced by libLLVMSupport.a(ConvertUTFWrapper.cpp.obj):(.text$_ZN4llvm17ConvertUTF8toWideENS_9StringRefERNSt7__cxx1112basic_stringIwSt11char_traitsIwESaIwEEE)
+    note: referenced by libLLVMSupport.a(ConvertUTFWrapper.cpp.obj):(.text$_ZN4llvm17ConvertUTF8toWideENS_9StringRefERNSt7__cxx1112basic_stringIwSt11char_traitsIwESaIwEEE)
+    note: referenced by libLLVMSupport.a(ConvertUTFWrapper.cpp.obj):(.text$_ZN4llvm17ConvertUTF8toWideEPKcRNSt7__cxx1112basic_stringIwSt11char_traitsIwESaIwEEE)
+    note: referenced 1 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::push_back(char)
+    note: referenced by libLLVMLTO.a(LTO.cpp.obj):(.text$_ZN4llvm3lto3LTO13addRegularLTOENS_13BitcodeModuleENS_8ArrayRefINS0_9InputFile6SymbolEEERPKNS0_16SymbolResolutionES9_)
+    note: referenced by libLLVMipo.a(LowerTypeTests.cpp.obj):(.text$_ZN12_GLOBAL__N_120LowerTypeTestsModule5lowerEv)
+    note: referenced by libclangAST.a(ASTContext.cpp.obj):(.text$_ZNK5clang10ASTContext26getObjCEncodingForTypeImplENS_8QualTypeERNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEENS0_14ObjCEncOptionsEPKNS_9FieldDeclEPS1_)
+    note: referenced 34 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::_M_erase(unsigned long long, unsigned long long)
+    note: referenced by libLLVMWindowsDriver.a(MSVCPaths.cpp.obj):(.text$_ZL19readFullStringValueP6HKEY__PKcRNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE)
+error: lld-link: undefined symbol: std::thread::detach()
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorD2Ev)
+error: lld-link: undefined symbol: std::future_category()
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorD2Ev)
+error: lld-link: undefined symbol: std::logic_error::logic_error(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&)
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorD2Ev)
+error: lld-link: undefined symbol: std::__exception_ptr::exception_ptr::_M_release()
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorD2Ev)
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorD2Ev)
+error: lld-link: undefined symbol: std::future_error::~future_error()
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorD2Ev)
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutorD2Ev)
+error: lld-link: undefined symbol: std::condition_variable::notify_one()
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel6detail12_GLOBAL__N_118ThreadPoolExecutor3addESt8functionIFvvEE)
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.text$_ZN4llvm8parallel9TaskGroup5spawnESt8functionIFvvEE)
+    note: referenced by libLLVMSupport.a(ThreadPool.cpp.obj):(llvm::StdThreadPool::asyncEnqueue(std::function<void ()>, llvm::ThreadPoolTaskGroup*))
+    note: referenced 3 more times
+error: lld-link: undefined symbol: vtable for std::future_error
+    note: referenced by libLLVMSupport.a(Parallel.cpp.obj):(.refptr._ZTVSt12future_error)
+error: lld-link: undefined symbol: std::random_device::_M_fini()
+    note: referenced by liblldELF.a(Writer.cpp.obj):(.text$_ZL12maybeShuffleRN3lld3elf3CtxERN4llvm8DenseMapIPKNS0_16InputSectionBaseEiNS3_12DenseMapInfoIS7_vEENS3_6detail12DenseMapPairIS7_iEEEE.part.0)
+    note: referenced by libLLVMSupport.a(LockFileManager.cpp.obj):(.text$_ZN4llvm15LockFileManager16waitForUnlockForENSt6chrono8durationIxSt5ratioILx1ELx1EEEE)
+error: lld-link: undefined symbol: std::random_device::_M_init(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&)
+    note: referenced by liblldELF.a(Writer.cpp.obj):(.text$_ZL12maybeShuffleRN3lld3elf3CtxERN4llvm8DenseMapIPKNS0_16InputSectionBaseEiNS3_12DenseMapInfoIS7_vEENS3_6detail12DenseMapPairIS7_iEEEE.part.0)
+    note: referenced by libLLVMSupport.a(LockFileManager.cpp.obj):(.text$_ZN4llvm15LockFileManager16waitForUnlockForENSt6chrono8durationIxSt5ratioILx1ELx1EEEE)
+error: lld-link: undefined symbol: std::random_device::_M_getval()
+    note: referenced by liblldELF.a(Writer.cpp.obj):(.text$_ZL12maybeShuffleRN3lld3elf3CtxERN4llvm8DenseMapIPKNS0_16InputSectionBaseEiNS3_12DenseMapInfoIS7_vEENS3_6detail12DenseMapPairIS7_iEEEE.part.0)
+    note: referenced by libLLVMSupport.a(ExponentialBackoff.cpp.obj):(.text$_ZNSt24uniform_int_distributionIyEclISt13random_deviceEEyRT_RKNS0_10param_typeE.isra.0)
+    note: referenced by libLLVMSupport.a(ExponentialBackoff.cpp.obj):(.text$_ZNSt24uniform_int_distributionIyEclISt13random_deviceEEyRT_RKNS0_10param_typeE.isra.0)
+    note: referenced 2 more times
+error: lld-link: undefined symbol: std::ostream& std::ostream::_M_insert<unsigned long long>(unsigned long long)
+    note: referenced by libLLVMipo.a(MemProfContextDisambiguation.cpp.obj):(.text$_ZN4llvm14DOTGraphTraitsIPKN12_GLOBAL__N_120CallsiteContextGraphINS1_26ModuleCallsiteContextGraphENS_8FunctionEPNS_11InstructionEEEE9getNodeIdEPKNS7_11ContextNodeE)
+    note: referenced by libLLVMInstrumentation.a(AddressSanitizer.cpp.obj):(.text$_ZN12_GLOBAL__N_121FunctionStackPoisoner19initializeCallbacksERN4llvm6ModuleE)
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced 1 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::rfind(char const*, unsigned long long, unsigned long long) const
+    note: referenced by libclangDriver.a(AIX.cpp.obj):(.text$_ZNK5clang6driver5tools3aix6Linker12ConstructJobERNS0_11CompilationERKNS0_9JobActionERKNS0_9InputInfoERKN4llvm11SmallVectorIS9_Lj4EEERKNSC_3opt7ArgListEPKc)
+    note: referenced by libclangDriver.a(AIX.cpp.obj):(.text$_ZNK5clang6driver5tools3aix6Linker12ConstructJobERNS0_11CompilationERKNS0_9JobActionERKNS0_9InputInfoERKN4llvm11SmallVectorIS9_Lj4EEERKNSC_3opt7ArgListEPKc)
+    note: referenced by libclangDriver.a(AIX.cpp.obj):(.text$_ZNK5clang6driver5tools3aix6Linker12ConstructJobERNS0_11CompilationERKNS0_9JobActionERKNS0_9InputInfoERKN4llvm11SmallVectorIS9_Lj4EEERKNSC_3opt7ArgListEPKc)
+    note: referenced 22 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::replace(unsigned long long, unsigned long long, char const*, unsigned long long)
+    note: referenced by libclangDriver.a(Clang.cpp.obj):(.text$_ZNK5clang6driver5tools5Clang12ConstructJobERNS0_11CompilationERKNS0_9JobActionERKNS0_9InputInfoERKN4llvm11SmallVectorIS8_Lj4EEERKNSB_3opt7ArgListEPKc)
+error: lld-link: undefined symbol: std::ostream::operator<<(int)
+    note: referenced by libLLVMAnalysis.a(ImportedFunctionsInliningStatistics.cpp.obj):(.text$_ZL13getStatStringPKciiS0_b)
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced 3 more times
+error: lld-link: undefined symbol: std::ostream& std::ostream::_M_insert<double>(double)
+    note: referenced by libLLVMAnalysis.a(ImportedFunctionsInliningStatistics.cpp.obj):(.text$_ZL13getStatStringPKciiS0_b)
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+error: lld-link: undefined symbol: std::ostream::sentry::sentry(std::ostream&)
+    note: referenced by libclangLex.a(PPMacroExpansion.cpp.obj):(.text$_ZStlsIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_St9_Put_timeIS3_E.isra.0)
+error: lld-link: undefined symbol: std::time_put<char, std::ostreambuf_iterator<char, std::char_traits<char>>>::put(std::ostreambuf_iterator<char, std::char_traits<char>>, std::ios_base&, char, tm const*, char const*, char const*) const
+    note: referenced by libclangLex.a(PPMacroExpansion.cpp.obj):(.text$_ZStlsIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_St9_Put_timeIS3_E.isra.0)
+error: lld-link: undefined symbol: std::locale::locale(char const*)
+    note: referenced by libclangLex.a(PPMacroExpansion.cpp.obj):(.text$_ZN5clang12Preprocessor18ExpandBuiltinMacroERNS_5TokenE)
+error: lld-link: undefined symbol: std::basic_ios<char, std::char_traits<char>>::imbue(std::locale const&)
+    note: referenced by libclangLex.a(PPMacroExpansion.cpp.obj):(.text$_ZN5clang12Preprocessor18ExpandBuiltinMacroERNS_5TokenE)
+error: lld-link: undefined symbol: std::time_put<char, std::ostreambuf_iterator<char, std::char_traits<char>>>::id
+    note: referenced by libclangLex.a(PPMacroExpansion.cpp.obj):(.refptr._ZNSt8time_putIcSt19ostreambuf_iteratorIcSt11char_traitsIcEEE2idE)
+error: lld-link: undefined symbol: std::ostream::write(char const*, long long)
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced 8 more times
+error: lld-link: undefined symbol: std::ostream::operator<<(short)
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+error: lld-link: undefined symbol: std::ostream::put(char)
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced by libclangAnalysis.a(ThreadSafety.cpp.obj):(clang::threadSafety::til::PrettyPrinter<clang::threadSafety::til::StdPrinter, std::ostream>::printSExpr(clang::threadSafety::til::SExpr const*, std::ostream&, unsigned int, bool))
+    note: referenced by libclangAnalysis.a(UnsafeBufferUsage.cpp.obj):(.text$_ZL16fixParamWithSpanPKN5clang11ParmVarDeclERKNS_10ASTContextERNS_24UnsafeBufferUsageHandlerE.isra.0)
+    note: referenced 5 more times
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::find_first_not_of(char, unsigned long long) const
+    note: referenced by libclangCodeGen.a(X86.cpp.obj):(.text$_ZNK12_GLOBAL__N_123X86_32TargetCodeGenInfo24addReturnRegisterOutputsERN5clang7CodeGen15CodeGenFunctionENS2_6LValueERNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERSt6vectorIPN4llvm4TypeESaISG_EESJ_RSD_IS5_SaIS5_EESC_j)
+error: lld-link: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::find_first_not_of(char const*, unsigned long long, unsigned long long) const
+    note: referenced by libclangCodeGen.a(X86.cpp.obj):(.text$_ZNK12_GLOBAL__N_123X86_32TargetCodeGenInfo24addReturnRegisterOutputsERN5clang7CodeGen15CodeGenFunctionENS2_6LValueERNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERSt6vectorIPN4llvm4TypeESaISG_EESJ_RSD_IS5_SaIS5_EESC_j)
+error: lld-link: undefined symbol: std::__cxx11::basic_stringbuf<char, std::char_traits<char>, std::allocator<char>>::str() const
+    note: referenced by libclangAnalysis.a(UnsafeBufferUsage.cpp.obj):(.text$_ZZL29createOverloadsForFixedParamsRKN5clang13FixitStrategyEPKNS_12FunctionDeclERKNS_10ASTContextERNS_24UnsafeBufferUsageHandlerEENKUlS5_E0_clES5_)
+    note: referenced by libclangAnalysis.a(UnsafeBufferUsage.cpp.obj):(.text$_ZNK21UPCPreIncrementGadget9getFixitsERKN5clang13FixitStrategyE)
+    note: referenced by libclangAnalysis.a(UnsafeBufferUsage.cpp.obj):(.text$_ZL16fixParamWithSpanPKN5clang11ParmVarDeclERKNS_10ASTContextERNS_24UnsafeBufferUsageHandlerE.isra.0)
+    note: referenced 1 more times
+error: lld-link: undefined symbol: std::basic_ios<char, std::char_traits<char>>::basic_ios()
+    note: referenced by libclangAnalysis.a(UnsafeBufferUsage.cpp.obj):(.text$_ZL16fixParamWithSpanPKN5clang11ParmVarDeclERKNS_10ASTContextERNS_24UnsafeBufferUsageHandlerE.isra.0)
+error: lld-link: undefined symbol: std::basic_iostream<char, std::char_traits<char>>::basic_iostream()
+    note: referenced by libclangAnalysis.a(UnsafeBufferUsage.cpp.obj):(.text$_ZL16fixParamWithSpanPKN5clang11ParmVarDeclERKNS_10ASTContextERNS_24UnsafeBufferUsageHandlerE.isra.0)
+error: lld-link: undefined symbol: std::basic_streambuf<char, std::char_traits<char>>::basic_streambuf()
+    note: referenced by libclangAnalysis.a(UnsafeBufferUsage.cpp.obj):(.text$_ZL16fixParamWithSpanPKN5clang11ParmVarDeclERKNS_10ASTContextERNS_24UnsafeBufferUsageHandlerE.isra.0)
+error: 145 compilation errors
+failed command: "C:\\Just-Things\\Projects\\Lib\\zig\\build-sig\\zig2.exe" build-exe --stack 48234496 "C:\\Just-Things\\Projects\\Lib\\zig\\build-sig\\zigcpp\\libzigcpp.a" "C:\\LLVM\\lib\\libclangFrontendTool.a" "C:\\LLVM\\lib\\libclangCodeGen.a" "C:\\LLVM\\lib\\libclangFrontend.a" "C:\\LLVM\\lib\\libclangDriver.a" "C:\\LLVM\\lib\\libclangSerialization.a" "C:\\LLVM\\lib\\libclangSema.a" "C:\\LLVM\\lib\\libclangStaticAnalyzerFrontend.a" "C:\\LLVM\\lib\\libclangStaticAnalyzerCheckers.a" "C:\\LLVM\\lib\\libclangStaticAnalyzerCore.a" "C:\\LLVM\\lib\\libclangAnalysis.a" "C:\\LLVM\\lib\\libclangASTMatchers.a" "C:\\LLVM\\lib\\libclangAST.a" "C:\\LLVM\\lib\\libclangParse.a" "C:\\LLVM\\lib\\libclangSema.a" "C:\\LLVM\\lib\\libclangAPINotes.a" "C:\\LLVM\\lib\\libclangBasic.a" "C:\\LLVM\\lib\\libclangEdit.a" "C:\\LLVM\\lib\\libclangLex.a" "C:\\LLVM\\lib\\libclangRewriteFrontend.a" "C:\\LLVM\\lib\\libclangRewrite.a" "C:\\LLVM\\lib\\libclangCrossTU.a" "C:\\LLVM\\lib\\libclangIndex.a" "C:\\LLVM\\lib\\libclangToolingCore.a" "C:\\LLVM\\lib\\libclangExtractAPI.a" "C:\\LLVM\\lib\\libclangSupport.a" "C:\\LLVM\\lib\\libclangInstallAPI.a" "C:\\LLVM\\lib\\libclangAST.a" -lversion "C:\\LLVM\\lib\\liblldMinGW.a" "C:\\LLVM\\lib\\liblldELF.a" "C:\\LLVM\\lib\\liblldCOFF.a" "C:\\LLVM\\lib\\liblldWasm.a" "C:\\LLVM\\lib\\liblldMachO.a" "C:\\LLVM\\lib\\liblldCommon.a" "C:\\LLVM\\lib\\libLLVMWindowsManifest.a" "C:\\LLVM\\lib\\libLLVMXRay.a" "C:\\LLVM\\lib\\libLLVMLibDriver.a" "C:\\LLVM\\lib\\libLLVMDlltoolDriver.a" "C:\\LLVM\\lib\\libLLVMTelemetry.a" "C:\\LLVM\\lib\\libLLVMTextAPIBinaryReader.a" "C:\\LLVM\\lib\\libLLVMCoverage.a" "C:\\LLVM\\lib\\libLLVMLineEditor.a" "C:\\LLVM\\lib\\libLLVMXCoreDisassembler.a" "C:\\LLVM\\lib\\libLLVMXCoreCodeGen.a" "C:\\LLVM\\lib\\libLLVMXCoreDesc.a" "C:\\LLVM\\lib\\libLLVMXCoreInfo.a" "C:\\LLVM\\lib\\libLLVMX86TargetMCA.a" "C:\\LLVM\\lib\\libLLVMX86Disassembler.a" "C:\\LLVM\\lib\\libLLVMX86AsmParser.a" "C:\\LLVM\\lib\\libLLVMX86CodeGen.a" "C:\\LLVM\\lib\\libLLVMX86Desc.a" "C:\\LLVM\\lib\\libLLVMX86Info.a" "C:\\LLVM\\lib\\libLLVMWebAssemblyDisassembler.a" "C:\\LLVM\\lib\\libLLVMWebAssemblyAsmParser.a" "C:\\LLVM\\lib\\libLLVMWebAssemblyCodeGen.a" "C:\\LLVM\\lib\\libLLVMWebAssemblyUtils.a" "C:\\LLVM\\lib\\libLLVMWebAssemblyDesc.a" "C:\\LLVM\\lib\\libLLVMWebAssemblyInfo.a" "C:\\LLVM\\lib\\libLLVMVEDisassembler.a" "C:\\LLVM\\lib\\libLLVMVEAsmParser.a" "C:\\LLVM\\lib\\libLLVMVECodeGen.a" "C:\\LLVM\\lib\\libLLVMVEDesc.a" "C:\\LLVM\\lib\\libLLVMVEInfo.a" "C:\\LLVM\\lib\\libLLVMSystemZDisassembler.a" "C:\\LLVM\\lib\\libLLVMSystemZAsmParser.a" "C:\\LLVM\\lib\\libLLVMSystemZCodeGen.a" "C:\\LLVM\\lib\\libLLVMSystemZDesc.a" "C:\\LLVM\\lib\\libLLVMSystemZInfo.a" "C:\\LLVM\\lib\\libLLVMSPIRVCodeGen.a" "C:\\LLVM\\lib\\libLLVMSPIRVDesc.a" "C:\\LLVM\\lib\\libLLVMSPIRVInfo.a" "C:\\LLVM\\lib\\libLLVMSPIRVAnalysis.a" "C:\\LLVM\\lib\\libLLVMSparcDisassembler.a" "C:\\LLVM\\lib\\libLLVMSparcAsmParser.a" "C:\\LLVM\\lib\\libLLVMSparcCodeGen.a" "C:\\LLVM\\lib\\libLLVMSparcDesc.a" "C:\\LLVM\\lib\\libLLVMSparcInfo.a" "C:\\LLVM\\lib\\libLLVMRISCVTargetMCA.a" "C:\\LLVM\\lib\\libLLVMRISCVDisassembler.a" "C:\\LLVM\\lib\\libLLVMRISCVAsmParser.a" "C:\\LLVM\\lib\\libLLVMRISCVCodeGen.a" "C:\\LLVM\\lib\\libLLVMRISCVDesc.a" "C:\\LLVM\\lib\\libLLVMRISCVInfo.a" "C:\\LLVM\\lib\\libLLVMPowerPCDisassembler.a" "C:\\LLVM\\lib\\libLLVMPowerPCAsmParser.a" "C:\\LLVM\\lib\\libLLVMPowerPCCodeGen.a" "C:\\LLVM\\lib\\libLLVMPowerPCDesc.a" "C:\\LLVM\\lib\\libLLVMPowerPCInfo.a" "C:\\LLVM\\lib\\libLLVMNVPTXCodeGen.a" "C:\\LLVM\\lib\\libLLVMNVPTXDesc.a" "C:\\LLVM\\lib\\libLLVMNVPTXInfo.a" "C:\\LLVM\\lib\\libLLVMMSP430Disassembler.a" "C:\\LLVM\\lib\\libLLVMMSP430AsmParser.a" "C:\\LLVM\\lib\\libLLVMMSP430CodeGen.a" "C:\\LLVM\\lib\\libLLVMMSP430Desc.a" "C:\\LLVM\\lib\\libLLVMMSP430Info.a" "C:\\LLVM\\lib\\libLLVMMipsDisassembler.a" "C:\\LLVM\\lib\\libLLVMMipsAsmParser.a" "C:\\LLVM\\lib\\libLLVMMipsCodeGen.a" "C:\\LLVM\\lib\\libLLVMMipsDesc.a" "C:\\LLVM\\lib\\libLLVMMipsInfo.a" "C:\\LLVM\\lib\\libLLVMLoongArchDisassembler.a" "C:\\LLVM\\lib\\libLLVMLoongArchAsmParser.a" "C:\\LLVM\\lib\\libLLVMLoongArchCodeGen.a" "C:\\LLVM\\lib\\libLLVMLoongArchDesc.a" "C:\\LLVM\\lib\\libLLVMLoongArchInfo.a" "C:\\LLVM\\lib\\libLLVMLanaiDisassembler.a" "C:\\LLVM\\lib\\libLLVMLanaiCodeGen.a" "C:\\LLVM\\lib\\libLLVMLanaiAsmParser.a" "C:\\LLVM\\lib\\libLLVMLanaiDesc.a" "C:\\LLVM\\lib\\libLLVMLanaiInfo.a" "C:\\LLVM\\lib\\libLLVMHexagonDisassembler.a" "C:\\LLVM\\lib\\libLLVMHexagonCodeGen.a" "C:\\LLVM\\lib\\libLLVMHexagonAsmParser.a" "C:\\LLVM\\lib\\libLLVMHexagonDesc.a" "C:\\LLVM\\lib\\libLLVMHexagonInfo.a" "C:\\LLVM\\lib\\libLLVMBPFDisassembler.a" "C:\\LLVM\\lib\\libLLVMBPFAsmParser.a" "C:\\LLVM\\lib\\libLLVMBPFCodeGen.a" "C:\\LLVM\\lib\\libLLVMBPFDesc.a" "C:\\LLVM\\lib\\libLLVMBPFInfo.a" "C:\\LLVM\\lib\\libLLVMAVRDisassembler.a" "C:\\LLVM\\lib\\libLLVMAVRAsmParser.a" "C:\\LLVM\\lib\\libLLVMAVRCodeGen.a" "C:\\LLVM\\lib\\libLLVMAVRDesc.a" "C:\\LLVM\\lib\\libLLVMAVRInfo.a" "C:\\LLVM\\lib\\libLLVMARMDisassembler.a" "C:\\LLVM\\lib\\libLLVMARMAsmParser.a" "C:\\LLVM\\lib\\libLLVMARMCodeGen.a" "C:\\LLVM\\lib\\libLLVMARMDesc.a" "C:\\LLVM\\lib\\libLLVMARMUtils.a" "C:\\LLVM\\lib\\libLLVMARMInfo.a" "C:\\LLVM\\lib\\libLLVMAMDGPUTargetMCA.a" "C:\\LLVM\\lib\\libLLVMAMDGPUDisassembler.a" "C:\\LLVM\\lib\\libLLVMAMDGPUAsmParser.a" "C:\\LLVM\\lib\\libLLVMAMDGPUCodeGen.a" "C:\\LLVM\\lib\\libLLVMAMDGPUDesc.a" "C:\\LLVM\\lib\\libLLVMAMDGPUUtils.a" "C:\\LLVM\\lib\\libLLVMAMDGPUInfo.a" "C:\\LLVM\\lib\\libLLVMAArch64Disassembler.a" "C:\\LLVM\\lib\\libLLVMAArch64AsmParser.a" "C:\\LLVM\\lib\\libLLVMAArch64CodeGen.a" "C:\\LLVM\\lib\\libLLVMAArch64Desc.a" "C:\\LLVM\\lib\\libLLVMAArch64Utils.a" "C:\\LLVM\\lib\\libLLVMAArch64Info.a" "C:\\LLVM\\lib\\libLLVMOrcDebugging.a" "C:\\LLVM\\lib\\libLLVMOrcJIT.a" "C:\\LLVM\\lib\\libLLVMWindowsDriver.a" "C:\\LLVM\\lib\\libLLVMMCJIT.a" "C:\\LLVM\\lib\\libLLVMJITLink.a" "C:\\LLVM\\lib\\libLLVMInterpreter.a" "C:\\LLVM\\lib\\libLLVMExecutionEngine.a" "C:\\LLVM\\lib\\libLLVMRuntimeDyld.a" "C:\\LLVM\\lib\\libLLVMOrcTargetProcess.a" "C:\\LLVM\\lib\\libLLVMOrcShared.a" "C:\\LLVM\\lib\\libLLVMDWP.a" "C:\\LLVM\\lib\\libLLVMDWARFCFIChecker.a" "C:\\LLVM\\lib\\libLLVMDebugInfoLogicalView.a" "C:\\LLVM\\lib\\libLLVMOption.a" "C:\\LLVM\\lib\\libLLVMObjCopy.a" "C:\\LLVM\\lib\\libLLVMMCA.a" "C:\\LLVM\\lib\\libLLVMMCDisassembler.a" "C:\\LLVM\\lib\\libLLVMLTO.a" "C:\\LLVM\\lib\\libLLVMPasses.a" "C:\\LLVM\\lib\\libLLVMHipStdPar.a" "C:\\LLVM\\lib\\libLLVMCFGuard.a" "C:\\LLVM\\lib\\libLLVMCoroutines.a" "C:\\LLVM\\lib\\libLLVMipo.a" "C:\\LLVM\\lib\\libLLVMVectorize.a" "C:\\LLVM\\lib\\libLLVMSandboxIR.a" "C:\\LLVM\\lib\\libLLVMLinker.a" "C:\\LLVM\\lib\\libLLVMFrontendOpenMP.a" "C:\\LLVM\\lib\\libLLVMFrontendOffloading.a" "C:\\LLVM\\lib\\libLLVMObjectYAML.a" "C:\\LLVM\\lib\\libLLVMFrontendOpenACC.a" "C:\\LLVM\\lib\\libLLVMFrontendHLSL.a" "C:\\LLVM\\lib\\libLLVMFrontendDriver.a" "C:\\LLVM\\lib\\libLLVMInstrumentation.a" "C:\\LLVM\\lib\\libLLVMFrontendDirective.a" "C:\\LLVM\\lib\\libLLVMFrontendAtomic.a" "C:\\LLVM\\lib\\libLLVMExtensions.a" "C:\\LLVM\\lib\\libLLVMDWARFLinkerParallel.a" "C:\\LLVM\\lib\\libLLVMDWARFLinkerClassic.a" "C:\\LLVM\\lib\\libLLVMDWARFLinker.a" "C:\\LLVM\\lib\\libLLVMGlobalISel.a" "C:\\LLVM\\lib\\libLLVMMIRParser.a" "C:\\LLVM\\lib\\libLLVMAsmPrinter.a" "C:\\LLVM\\lib\\libLLVMSelectionDAG.a" "C:\\LLVM\\lib\\libLLVMCodeGen.a" "C:\\LLVM\\lib\\libLLVMTarget.a" "C:\\LLVM\\lib\\libLLVMObjCARCOpts.a" "C:\\LLVM\\lib\\libLLVMCodeGenTypes.a" "C:\\LLVM\\lib\\libLLVMCGData.a" "C:\\LLVM\\lib\\libLLVMIRPrinter.a" "C:\\LLVM\\lib\\libLLVMInterfaceStub.a" "C:\\LLVM\\lib\\libLLVMFileCheck.a" "C:\\LLVM\\lib\\libLLVMFuzzMutate.a" "C:\\LLVM\\lib\\libLLVMScalarOpts.a" "C:\\LLVM\\lib\\libLLVMInstCombine.a" "C:\\LLVM\\lib\\libLLVMAggressiveInstCombine.a" "C:\\LLVM\\lib\\libLLVMTransformUtils.a" "C:\\LLVM\\lib\\libLLVMBitWriter.a" "C:\\LLVM\\lib\\libLLVMAnalysis.a" "C:\\LLVM\\lib\\libLLVMProfileData.a" "C:\\LLVM\\lib\\libLLVMSymbolize.a" "C:\\LLVM\\lib\\libLLVMDebugInfoBTF.a" "C:\\LLVM\\lib\\libLLVMDebugInfoPDB.a" "C:\\LLVM\\lib\\libLLVMDebugInfoMSF.a" "C:\\LLVM\\lib\\libLLVMDebugInfoCodeView.a" "C:\\LLVM\\lib\\libLLVMDebugInfoGSYM.a" "C:\\LLVM\\lib\\libLLVMDebugInfoDWARF.a" "C:\\LLVM\\lib\\libLLVMDebugInfoDWARFLowLevel.a" "C:\\LLVM\\lib\\libLLVMObject.a" "C:\\LLVM\\lib\\libLLVMTextAPI.a" "C:\\LLVM\\lib\\libLLVMMCParser.a" "C:\\LLVM\\lib\\libLLVMIRReader.a" "C:\\LLVM\\lib\\libLLVMAsmParser.a" "C:\\LLVM\\lib\\libLLVMMC.a" "C:\\LLVM\\lib\\libLLVMBitReader.a" "C:\\LLVM\\lib\\libLLVMFuzzerCLI.a" "C:\\LLVM\\lib\\libLLVMCore.a" "C:\\LLVM\\lib\\libLLVMRemarks.a" "C:\\LLVM\\lib\\libLLVMBitstreamReader.a" "C:\\LLVM\\lib\\libLLVMBinaryFormat.a" "C:\\LLVM\\lib\\libLLVMTargetParser.a" "C:\\LLVM\\lib\\libLLVMTableGen.a" "C:\\LLVM\\lib\\libLLVMSupport.a" "C:\\LLVM\\lib\\libLLVMDemangle.a" -lpsapi -lshell32 -lole32 -ladvapi32 -lws2_32 -lntdll -fstrip -fno-sanitize-thread -OReleaseFast -I "C:\\LLVM\\include" -I "C:\\LLVM\\include" -L "C:\\LLVM\\lib" --dep aro --dep build_options "-Mroot=C:\\Just-Things\\Projects\\Lib\\zig\\src\\main.zig" "-Maro=C:\\Just-Things\\Projects\\Lib\\zig\\lib\\compiler\\aro\\aro.zig" "-Mbuild_options=.zig-cache\\c\\379e0b2997beb7b03e4beb5940eee3b2\\options.zig" -lc++ -lc --cache-dir .zig-cache --global-cache-dir "C:\\Users\\Shado\\AppData\\Local\\zig" --name sig -L "C:\\LLVM\\lib" -I "C:\\LLVM\\include" --zig-lib-dir "lib\\" --listen=-
+
+Build Summary: 1/4 steps succeeded (1 failed)
+install transitive failure
++- install sig transitive failure
+   +- compile exe sig ReleaseFast native 145 errors
+
+error: the following build command failed with exit code 1:
+.zig-cache\o\af6ca4e454ea8adb7a3b175709c9ebbf\build.exe C:\Just-Things\Projects\Lib\zig\build-sig\zig2.exe lib C:\Just-Things\Projects\Lib\zig .zig-cache C:\Users\Shado\AppData\Local\zig --seed 0xfba4695 -Zde753930e817d20b -Dversion-string=0.16.0-dev.3075+abbe2424d -Dtarget=native -Dcpu=native -Denable-llvm -Dconfig_h=C:\Just-Things\Projects\Lib\zig\build-sig\config.h -Dno-langref -Doptimize=ReleaseFast -Dstrip -Dno-lib -Dno-win32-res --prefix build-sig/stage3
