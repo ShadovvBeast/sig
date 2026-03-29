@@ -38,13 +38,13 @@ jobs:
             SIG_VER="${{ inputs.version }}"
             echo "is_prerelease=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
           else
-            # Auto-release: use sig_version from build.zig
-            SIG_VER=$(grep -oP 'sig_version = "\K[^"]+' build.zig || echo "0.0.1-dev")
+            # Auto-release: use sig_version from build.sig
+            SIG_VER=$(grep -oP 'sig_version = "\K[^"]+' build.sig || echo "0.0.1-dev")
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           fi
-          # Get the full zig version from git describe (same logic as build.zig)
+          # Get the full zig version from git describe (same logic as build.sig)
           # This already includes the zig commit hash (e.g. 0.16.0-dev.3036+aed7a6e1f)
-          ZIG_BASE=$(grep -oP 'zig_version.*major = \K\d+' build.zig).$(grep -oP 'zig_version.*minor = \K\d+' build.zig).$(grep -oP 'zig_version.*patch = \K\d+' build.zig)
+          ZIG_BASE=$(grep -oP 'zig_version.*major = \K\d+' build.sig).$(grep -oP 'zig_version.*minor = \K\d+' build.sig).$(grep -oP 'zig_version.*patch = \K\d+' build.sig)
           GIT_DESC=$(git describe --match "*.*.*" --tags --abbrev=9 2>/dev/null || echo "${ZIG_BASE}")
           # Get short sig commit hash (HEAD of the sig branch)
           SIG_HASH=$(git rev-parse --short=10 HEAD)
