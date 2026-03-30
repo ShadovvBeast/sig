@@ -301,3 +301,44 @@ jobs:
       - name: Build and Test
         run: ci/x86_64-windows-release.ps1
         timeout-minutes: 180
+
+  # [sig] Sig build runner tests — bootstrap, test, verify, benchmark
+  sig-tests:
+    runs-on: [self-hosted, x86_64-linux]
+    steps:
+      - name: Checkout
+        uses: https://codeberg.org/ziglang/checkout@19af6bac491e2534a4687a50ee84fa7f13258d28
+        with:
+          fetch-depth: 0
+
+      - name: Bootstrap sig build runner
+        run: |
+          chmod +x bootstrap.sh
+          ./bootstrap.sh
+        timeout-minutes: 30
+
+      - name: Run Sig tests
+        run: |
+          export PATH="$PWD/zig-out/bin:$PATH"
+          sig-build test-sig
+        timeout-minutes: 60
+
+      - name: Verify identical output
+        run: |
+          export PATH="$PWD/zig-out/bin:$PATH"
+          sig-build --verify-identical
+        timeout-minutes: 60
+
+      - name: Benchmark build performance
+        run: |
+          export PATH="$PWD/zig-out/bin:$PATH"
+          mkdir -p benchmark-results
+          sig-build --benchmark | tee benchmark-results/ci-benchmark.txt
+        timeout-minutes: 30
+
+      - name: Archive benchmark results
+        uses: https://codeberg.org/ziglang/upload-artifact@v4
+        with:
+          name: sig-benchmark-results
+          path: benchmark-results/
+          if-no-files-found: ignore

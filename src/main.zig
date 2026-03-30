@@ -5238,6 +5238,79 @@ fn cmdBuild(gpa: Allocator, arena: Allocator, io: Io, args: []const []const u8, 
         .build_file = build_file,
     });
 
+    // [sig] When build.sig is the build file, delegate to the sig build runner.
+    // The sig build runner is a standalone program that reads build.sig using
+    // the zero-allocator Build_Runner API — it does NOT go through std.Build.
+    // We compile tools/sig_build/main.sig and exec it with the original args.
+    if (mem.eql(u8, build_root.build_zig_basename, Package.build_sig_basename)) {
+        const sig_runner_path = try fs.path.join(arena, &.{
+            build_root.directory.path orelse ".", "tools", "sig_build", "main.sig",
+        });
+        const sig_mod_path = try fs.path.join(arena, &.{
+            build_root.directory.path orelse ".", "lib", "sig", "sig.zig",
+        });
+
+        // Check that the sig build runner source exists.
+        Io.Dir.cwd().access(io, sig_runner_path, .{}) catch {
+            fatal("sig build runner not found at '{s}'. Run bootstrap.sh first.", .{sig_runner_path});
+        };
+
+        // Compile the sig build runner as a standalone executable.
+        // This mirrors what bootstrap.sh does: sig build-exe main.sig --mod sig:lib/sig/sig.zig
+        var sig_compile_argv: std.ArrayList([]const u8) = .empty;
+        try sig_compile_argv.append(arena, self_exe_path);
+        try sig_compile_argv.append(arena, "build-exe");
+        try sig_compile_argv.append(arena, sig_runner_path);
+        try sig_compile_argv.append(arena, "--mod");
+        try sig_compile_argv.append(arena, try std.fmt.allocPrint(arena, "sig:{s}", .{sig_mod_path}));
+        try sig_compile_argv.append(arena, "--name");
+        try sig_compile_argv.append(arena, "sig-build");
+        try sig_compile_argv.append(arena, "--cache-dir");
+        try sig_compile_argv.append(arena, try build_root.directory.join(arena, &.{introspect.default_local_zig_cache_basename}));
+
+        // Compile the sig build runner.
+        const compile_term = term: {
+            var child = std.process.spawn(io, .{
+                .argv = sig_compile_argv.items,
+                .stdin = .inherit,
+                .stdout = .inherit,
+                .stderr = .inherit,
+            }) catch |err| fatal("failed to compile sig build runner: {t}", .{err});
+            defer child.kill(io);
+            break :term child.wait(io) catch |err| fatal("sig build runner compilation failed: {t}", .{err});
+        };
+        switch (compile_term) {
+            .exited => |code| if (code != 0) process.exit(code),
+            else => process.exit(1),
+        }
+
+        // Now run the compiled sig build runner, forwarding all original args.
+        const cache_dir = try build_root.directory.join(arena, &.{introspect.default_local_zig_cache_basename});
+        const runner_bin = try fs.path.join(arena, &.{ cache_dir, "sig-build" });
+
+        var runner_argv: std.ArrayList([]const u8) = .empty;
+        try runner_argv.append(arena, runner_bin);
+        // Forward all original args.
+        for (args) |arg| {
+            try runner_argv.append(arena, arg);
+        }
+
+        const runner_term = term2: {
+            var child = std.process.spawn(io, .{
+                .argv = runner_argv.items,
+                .stdin = .inherit,
+                .stdout = .inherit,
+                .stderr = .inherit,
+            }) catch |err| fatal("failed to run sig build runner: {t}", .{err});
+            defer child.kill(io);
+            break :term2 child.wait(io) catch |err| fatal("sig build runner failed: {t}", .{err});
+        };
+        switch (runner_term) {
+            .exited => |code| process.exit(code),
+            else => process.exit(1),
+        }
+    }
+
     // This `init` calls `fatal` on error.
     var dirs: Compilation.Directories = .init(
         arena,

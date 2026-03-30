@@ -17,7 +17,7 @@
 // Keep the format exactly as-is — the grep patterns depend on it.
 //
 // sig_version: Sig layer version, bumped on Sig-specific releases.
-// zig_version: Upstream Zig version this Sig build tracks. Must match build.zig.
+// zig_version: Upstream Zig version this Sig build tracks.
 const sig_version = .{ .major = 0, .minor = 0, .patch = 3, .pre = "dev" };
 const zig_version = .{ .major = 0, .minor = 16, .patch = 0 };
 
