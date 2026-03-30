@@ -87,6 +87,7 @@ jobs:
 
       - name: Build sig with cmake
         run: |
+          export PATH="$HOME/llvm-21/bin:$PATH"
           mkdir build && cd build
           cmake .. -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -95,7 +96,8 @@ jobs:
             -DZIG_TARGET_TRIPLE="x86_64-linux-musl" \
             -DZIG_TARGET_MCPU=baseline \
             -DZIG_STATIC=ON \
-            -DZIG_NO_LIB=ON
+            -DZIG_NO_LIB=ON \
+            -DZIG_USE_LLVM_CONFIG=ON
           ninja install -j$(nproc)
           cd ..
           bootstrap-sig/bin/sig version
