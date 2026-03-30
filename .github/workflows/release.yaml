@@ -1,4 +1,6 @@
-# [sig] Build and publish Sig compiler releases — native builds on all platforms
+# [sig] Build and publish Sig compiler releases — all 4 platforms
+# Stage 1: Build x86_64-linux natively (self-hosted backend)
+# Stage 2: Use stage 1 binary + LLVM to cross-compile aarch64-linux, aarch64-macos, x86_64-windows
 name: release
 
 on:
@@ -56,25 +58,12 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Resolved: sig=${SIG_VER}, zig=${ZIG_VER}, hash=${SIG_HASH}, full=${VERSION}"
 
-  build:
+  # ── Stage 1: Build x86_64-linux natively ─────────────────────────────
+  # The self-hosted backend works for x86_64. This produces the compiler
+  # binary we'll use in stage 2 for cross-compilation.
+  build-native:
     needs: resolve-version
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-linux
-            os: ubuntu-latest
-            ext: tar.xz
-          - target: aarch64-linux
-            os: ubuntu-24.04-arm
-            ext: tar.xz
-          - target: aarch64-macos
-            os: macos-latest
-            ext: tar.xz
-          - target: x86_64-windows
-            os: windows-latest
-            ext: zip
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
@@ -87,71 +76,43 @@ jobs:
         with:
           version: latest
 
-      - name: Build release binary (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
+      - name: Build x86_64-linux natively
         run: |
-          echo "Building natively on ${{ matrix.os }} for ${{ matrix.target }}..."
+          echo "Stage 1: Building x86_64-linux natively..."
           sig build \
             -Doptimize=ReleaseSafe \
             -Dno-lib \
             -Dno-langref \
-            --prefix "sig-${VERSION}-${{ matrix.target }}" \
+            --prefix "sig-${VERSION}-x86_64-linux" \
             --maxrss 0
         timeout-minutes: 120
 
-      - name: Build release binary (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Write-Host "Building natively on ${{ matrix.os }} for ${{ matrix.target }}..."
-          sig build `
-            -Doptimize=ReleaseSafe `
-            -Dno-lib `
-            -Dno-langref `
-            --prefix "sig-${env:VERSION}-${{ matrix.target }}" `
-            --maxrss 0
-        timeout-minutes: 120
-
-      - name: Install lib files (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
+      - name: Install lib files
         run: |
           sig build \
             -Dlib-files-only \
-            --prefix "sig-${VERSION}-${{ matrix.target }}" \
+            --prefix "sig-${VERSION}-x86_64-linux" \
             --maxrss 0
         timeout-minutes: 10
 
-      - name: Install lib files (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Package x86_64-linux tarball
         run: |
-          sig build `
-            -Dlib-files-only `
-            --prefix "sig-${env:VERSION}-${{ matrix.target }}" `
-            --maxrss 0
-        timeout-minutes: 10
+          tar -cJf "sig-${VERSION}-x86_64-linux.tar.xz" "sig-${VERSION}-x86_64-linux"
 
-      - name: Package tarball (Linux/macOS)
-        if: matrix.ext == 'tar.xz'
-        shell: bash
-        run: |
-          ARCHIVE="sig-${VERSION}-${{ matrix.target }}.tar.xz"
-          tar -cJf "${ARCHIVE}" "sig-${VERSION}-${{ matrix.target }}"
-          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+      - name: Upload x86_64-linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sig-x86_64-linux
+          path: sig-${{ env.VERSION }}-x86_64-linux.tar.xz
 
-      - name: Package zip (Windows)
-        if: matrix.ext == 'zip'
-        shell: pwsh
-        run: |
-          $archive = "sig-${env:VERSION}-${{ matrix.target }}.zip"
-          Compress-Archive -Path "sig-${env:VERSION}-${{ matrix.target }}" -DestinationPath $archive
-          "ARCHIVE=$archive" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+      # Also upload the raw binary for stage 2 cross-compilation
+      - name: Upload stage 1 compiler for cross-compilation
+        uses: actions/upload-artifact@v4
+        with:
+          name: sig-stage1-compiler
+          path: sig-${{ env.VERSION }}-x86_64-linux/
 
       - name: Benchmark build performance
-        if: matrix.target == 'x86_64-linux'
-        shell: bash
         run: |
           mkdir -p benchmark-results
           sig build --benchmark | tee benchmark-results/release-benchmark.txt
@@ -159,32 +120,107 @@ jobs:
         continue-on-error: true
 
       - name: Upload benchmark results
-        if: matrix.target == 'x86_64-linux'
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-release-${{ matrix.target }}
+          name: benchmark-release
           path: benchmark-results/
           if-no-files-found: ignore
 
-      - name: Generate checksum
-        shell: bash
+  # ── Stage 2: Cross-compile other targets using stage 1 + LLVM ────────
+  # The self-hosted aarch64/wasm backends have codegen bugs. We use the
+  # freshly-built x86_64-linux sig binary with LLVM to cross-compile.
+  build-cross:
+    needs: [resolve-version, build-native]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-linux
+            zig_target: aarch64-linux-musl
+            ext: tar.xz
+          - target: aarch64-macos
+            zig_target: aarch64-macos
+            ext: tar.xz
+          - target: x86_64-windows
+            zig_target: x86_64-windows
+            ext: zip
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download stage 1 compiler
+        uses: actions/download-artifact@v4
+        with:
+          name: sig-stage1-compiler
+          path: stage1-sig
+
+      - name: Install stage 1 sig on PATH
         run: |
-          if command -v sha256sum &>/dev/null; then
-            sha256sum "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
-          else
-            shasum -a 256 "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
-          fi
+          chmod +x stage1-sig/bin/sig
+          echo "$PWD/stage1-sig/bin" >> "$GITHUB_PATH"
+          # Verify it works
+          stage1-sig/bin/sig version
+
+      - name: Install LLVM 19
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm-19.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq llvm-19-dev lld-19 libclang-19-dev liblld-19-dev
+          echo "LLVM 19 installed"
+        timeout-minutes: 10
+
+      - name: Cross-compile for ${{ matrix.target }}
+        run: |
+          echo "Stage 2: Cross-compiling for ${{ matrix.zig_target }} with LLVM..."
+          sig build \
+            -Dtarget=${{ matrix.zig_target }} \
+            -Doptimize=ReleaseSafe \
+            -Denable-llvm \
+            -Dstatic-llvm \
+            -Dno-lib \
+            -Dno-langref \
+            --prefix "sig-${VERSION}-${{ matrix.target }}" \
+            --maxrss 0
+        timeout-minutes: 120
+
+      - name: Install lib files
+        run: |
+          sig build \
+            -Dlib-files-only \
+            --prefix "sig-${VERSION}-${{ matrix.target }}" \
+            --maxrss 0
+        timeout-minutes: 10
+
+      - name: Package tarball (Linux/macOS)
+        if: matrix.ext == 'tar.xz'
+        run: |
+          ARCHIVE="sig-${VERSION}-${{ matrix.target }}.tar.xz"
+          tar -cJf "${ARCHIVE}" "sig-${VERSION}-${{ matrix.target }}"
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Package zip (Windows)
+        if: matrix.ext == 'zip'
+        run: |
+          ARCHIVE="sig-${VERSION}-${{ matrix.target }}.zip"
+          cd "sig-${VERSION}-${{ matrix.target }}"
+          zip -r "../${ARCHIVE}" .
+          cd ..
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: sig-${{ matrix.target }}
-          path: |
-            ${{ env.ARCHIVE }}
-            ${{ env.ARCHIVE }}.sha256
+          path: ${{ env.ARCHIVE }}
 
+  # ── Release: collect all artifacts and publish ───────────────────────
   release:
-    needs: [resolve-version, build]
+    needs: [resolve-version, build-native, build-cross]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -195,12 +231,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: sig-*
           merge-multiple: true
 
-      - name: Combine checksums
+      - name: Generate checksums
         run: |
           cd artifacts
-          cat *.sha256 > sha256sums.txt
+          sha256sum sig-*.tar.xz sig-*.zip 2>/dev/null > sha256sums.txt || true
           echo "=== sha256sums.txt ==="
           cat sha256sums.txt
 
@@ -232,7 +269,7 @@ jobs:
           | macOS aarch64 | \`sig-${VERSION}-aarch64-macos.tar.xz\` |
           | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
 
-          All binaries built natively on their target platform. No cross-compilation.
+          x86_64-linux built natively. Other targets cross-compiled with LLVM.
 
           Checksums are in \`sha256sums.txt\`." \
             ${PRERELEASE} \
