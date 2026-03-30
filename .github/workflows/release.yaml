@@ -135,6 +135,39 @@ jobs:
           Compress-Archive -Path "sig-${env:VERSION}-${{ matrix.target }}" -DestinationPath $archive
           "ARCHIVE=$archive" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
 
+      - name: Verify identical output  # [sig] Regression gate: sig build must match zig build
+        if: matrix.target == 'x86_64-linux'  # Run on one target to avoid doubling build time
+        shell: bash
+        run: |
+          if command -v sig &>/dev/null; then
+            sig build --verify-identical \
+              -Dtarget=x86_64-linux-musl \
+              -Doptimize=ReleaseSafe
+          else
+            echo "::warning::sig not available, skipping verify-identical"
+          fi
+        timeout-minutes: 60
+
+      - name: Benchmark build performance  # [sig] Track build performance trends
+        if: matrix.target == 'x86_64-linux'
+        shell: bash
+        run: |
+          if command -v sig &>/dev/null; then
+            mkdir -p benchmark-results
+            sig build --benchmark | tee benchmark-results/release-benchmark.txt
+          else
+            echo "::warning::sig not available, skipping benchmark"
+          fi
+        timeout-minutes: 30
+
+      - name: Upload benchmark results
+        if: matrix.target == 'x86_64-linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-release-${{ matrix.target }}
+          path: benchmark-results/
+          if-no-files-found: ignore
+
       - name: Generate checksum
         shell: bash
         run: |

@@ -69,6 +69,16 @@ jobs:
         env:
           HAS_CODEBERG: ${{ secrets.CODEBERG_TOKEN != '' }}
 
+      - name: Run Sig tests  # [sig] Verify Sig tests still pass after sync
+        if: steps.check.outputs.skip != 'true'
+        run: sig build test-sig
+        timeout-minutes: 30
+
+      - name: Verify identical output  # [sig] Regression gate after sync
+        if: steps.check.outputs.skip != 'true'
+        run: sig build --verify-identical
+        timeout-minutes: 60
+
       - name: Check for conflicts
         if: steps.check.outputs.skip != 'true'
         run: |
