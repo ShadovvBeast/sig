@@ -50,19 +50,15 @@ jobs:
             fi
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           fi
-          # Get the zig version from build.sig (same struct format as sig_version)
+          # Get zig version from build.sig
           ZIG_MAJOR=$(grep -oP 'zig_version.*major = \K\d+' build.sig)
           ZIG_MINOR=$(grep -oP 'zig_version.*minor = \K\d+' build.sig)
           ZIG_PATCH=$(grep -oP 'zig_version.*patch = \K\d+' build.sig)
-          ZIG_BASE="${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}"
-          GIT_DESC=$(git describe --match "*.*.*" --tags --abbrev=9 2>/dev/null || echo "${ZIG_BASE}")
-          # Get short sig commit hash (HEAD of the sig branch)
-          SIG_HASH=$(git rev-parse --short=10 HEAD)
-          # Build version: {sig_ver}+zig{zig_desc}.sig.{sig_hash}
-          VERSION="${SIG_VER}+zig${GIT_DESC}.sig.${SIG_HASH}"
+          ZIG_VER="${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}"
+          SIG_HASH=$(git rev-parse --short=7 HEAD)
+          VERSION="${SIG_VER}+zig${ZIG_VER}.${SIG_HASH}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "sig_version=${SIG_VER}" >> "$GITHUB_OUTPUT"
-          echo "Resolved: sig=${SIG_VER}, zig=${GIT_DESC}, sig_hash=${SIG_HASH}, full=${VERSION}"
+          echo "Resolved: sig=${SIG_VER}, zig=${ZIG_VER}, hash=${SIG_HASH}, full=${VERSION}"
 
   build:
     needs: resolve-version
