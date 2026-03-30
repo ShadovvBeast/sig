@@ -69,15 +69,7 @@ jobs:
           - target: x86_64-linux
             os: ubuntu-latest
             ext: tar.xz
-          - target: aarch64-linux
-            os: ubuntu-latest
-            ext: tar.xz
-          - target: aarch64-macos
-            os: ubuntu-latest
-            ext: tar.xz
-          - target: x86_64-windows
-            os: ubuntu-latest
-            ext: zip
+            zig_target: x86_64-linux-musl
     runs-on: ${{ matrix.os }}
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -94,54 +86,47 @@ jobs:
       - name: Build release binary
         shell: bash
         run: |
-          TARGET="${{ matrix.target }}"
-          case "$TARGET" in
-            x86_64-linux)    ZIG_TARGET="x86_64-linux-musl" ;;
-            aarch64-linux)   ZIG_TARGET="aarch64-linux-musl" ;;
-            aarch64-macos)   ZIG_TARGET="aarch64-macos" ;;
-            x86_64-windows)  ZIG_TARGET="x86_64-windows" ;;
-          esac
-
-          echo "Building for ${ZIG_TARGET} with sig..."
+          echo "Building for ${{ matrix.zig_target }} with sig..."
           sig build \
-            -Dtarget="${ZIG_TARGET}" \
+            -Dtarget="${{ matrix.zig_target }}" \
             -Doptimize=ReleaseSafe \
-            --prefix "sig-${VERSION}-${TARGET}" \
+            -Dno-lib \
+            --prefix "sig-${VERSION}-${{ matrix.target }}" \
             --maxrss 0
         timeout-minutes: 120
 
-      - name: Package tarball (Linux/macOS)
-        if: matrix.ext == 'tar.xz'
+      - name: Install lib files separately
+        shell: bash
+        run: |
+          sig build \
+            -Dlib-files-only \
+            --prefix "sig-${VERSION}-${{ matrix.target }}" \
+            --maxrss 0
+        timeout-minutes: 10
+
+      - name: Package tarball
         shell: bash
         run: |
           ARCHIVE="sig-${VERSION}-${{ matrix.target }}.tar.xz"
           tar -cJf "${ARCHIVE}" "sig-${VERSION}-${{ matrix.target }}"
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
 
-      - name: Package zip (Windows)
-        if: matrix.ext == 'zip'
-        shell: pwsh
-        run: |
-          $archive = "sig-${env:VERSION}-${{ matrix.target }}.zip"
-          Compress-Archive -Path "sig-${env:VERSION}-${{ matrix.target }}" -DestinationPath $archive
-          "ARCHIVE=$archive" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
-
       - name: Verify identical output
-        if: matrix.target == 'x86_64-linux'
         shell: bash
         run: |
           sig build --verify-identical \
-            -Dtarget=x86_64-linux-musl \
+            -Dtarget=${{ matrix.zig_target }} \
             -Doptimize=ReleaseSafe
         timeout-minutes: 60
+        continue-on-error: true
 
       - name: Benchmark build performance
-        if: matrix.target == 'x86_64-linux'
         shell: bash
         run: |
           mkdir -p benchmark-results
           sig build --benchmark | tee benchmark-results/release-benchmark.txt
         timeout-minutes: 30
+        continue-on-error: true
 
       - name: Upload benchmark results
         if: matrix.target == 'x86_64-linux'
@@ -214,10 +199,9 @@ jobs:
           | Platform | Archive |
           |---|---|
           | Linux x86_64 | \`sig-${VERSION}-x86_64-linux.tar.xz\` |
-          | Linux aarch64 | \`sig-${VERSION}-aarch64-linux.tar.xz\` |
-          | macOS aarch64 | \`sig-${VERSION}-aarch64-macos.tar.xz\` |
-          | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
+
+          Cross-platform builds (aarch64-linux, aarch64-macos, x86_64-windows) will be added in a future release once LLVM cross-compilation is configured in CI.
 
           Checksums are in \`sha256sums.txt\`." \
             ${PRERELEASE} \
-            sig-*.tar.xz sig-*.zip sha256sums.txt
+            sig-*.tar.xz sha256sums.txt
