@@ -95,6 +95,7 @@ jobs:
           sig build \
             -Doptimize=ReleaseSafe \
             -Dno-lib \
+            -Dno-langref \
             --prefix "sig-${VERSION}-${{ matrix.target }}" \
             --maxrss 0
         timeout-minutes: 120
@@ -107,6 +108,7 @@ jobs:
           sig build `
             -Doptimize=ReleaseSafe `
             -Dno-lib `
+            -Dno-langref `
             --prefix "sig-${env:VERSION}-${{ matrix.target }}" `
             --maxrss 0
         timeout-minutes: 120
