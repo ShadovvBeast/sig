@@ -56,7 +56,7 @@ jobs:
 
       - name: Build LLVM 21 from source
         run: |
-          LLVM_VERSION="llvmorg-21.0.0"
+          LLVM_VERSION="llvmorg-21.1.2"
           echo "Cloning LLVM ${LLVM_VERSION}..."
           git clone --depth 1 --branch "${LLVM_VERSION}" https://github.com/llvm/llvm-project.git llvm-src
 
