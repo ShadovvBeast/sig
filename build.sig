@@ -41,18 +41,24 @@ pub fn build(b: *std.Build) !void {
     const no_bin = b.option(bool, "no-bin", "skip emitting compiler binary") orelse false;
     const enable_superhtml = b.option(bool, "enable-superhtml", "Check langref output HTML validity") orelse false;
 
-    const langref_file = generateLangRef(b);
-    const install_langref = b.addInstallFileWithDir(langref_file, .prefix, "doc/langref.html");
-    const check_langref = superHtmlCheck(b, langref_file);
-    if (enable_superhtml) install_langref.step.dependOn(check_langref);
+    const langref_file = if (!skip_install_langref) generateLangRef(b) else null;
+    if (langref_file) |lf| {
+        const install_langref = b.addInstallFileWithDir(lf, .prefix, "doc/langref.html");
+        const check_langref = superHtmlCheck(b, lf);
+        if (enable_superhtml) install_langref.step.dependOn(check_langref);
 
-    const check_autodocs = superHtmlCheck(b, b.path("lib/docs/index.html"));
-    if (enable_superhtml) {
-        test_step.dependOn(check_langref);
-        test_step.dependOn(check_autodocs);
-    }
-    if (!skip_install_langref) {
+        const check_autodocs = superHtmlCheck(b, b.path("lib/docs/index.html"));
+        if (enable_superhtml) {
+            test_step.dependOn(check_langref);
+            test_step.dependOn(check_autodocs);
+        }
         b.getInstallStep().dependOn(&install_langref.step);
+
+        const langref_step = b.step("langref", "Build and install the language reference");
+        langref_step.dependOn(&install_langref.step);
+
+        const docs_step = b.step("docs", "Build and install documentation");
+        docs_step.dependOn(langref_step);
     }
 
     const autodoc_test = b.addObject(.{
@@ -79,15 +85,16 @@ pub fn build(b: *std.Build) !void {
         b.installFile("README.md", "README.md");
     }
 
-    const langref_step = b.step("langref", "Build and install the language reference");
-    langref_step.dependOn(&install_langref.step);
-
     const std_docs_step = b.step("std-docs", "Build and install the standard library documentation");
     std_docs_step.dependOn(&install_std_docs.step);
 
-    const docs_step = b.step("docs", "Build and install documentation");
-    docs_step.dependOn(langref_step);
-    docs_step.dependOn(std_docs_step);
+    if (langref_file == null) {
+        // When langref is skipped, still register the steps as no-ops so
+        // `sig build docs` doesn't error with "unknown step".
+        _ = b.step("langref", "Build and install the language reference (skipped: -Dno-langref)");
+        const docs_step = b.step("docs", "Build and install documentation");
+        docs_step.dependOn(std_docs_step);
+    }
 
     const no_matrix = b.option(bool, "no-matrix", "Limit test matrix to exactly one target configuration") orelse false;
     const fuzz_only = b.option(bool, "fuzz-only", "Limit test matrix to one target suitable for fuzzing") orelse false;
