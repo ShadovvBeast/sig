@@ -46,25 +46,32 @@ jobs:
           VERSION="${SIG_VER}+zig${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}.$(git rev-parse --short=7 HEAD)"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Install LLVM 21
+      - name: Download pre-built LLVM+Clang+LLD
         run: |
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | sudo tee /etc/apt/sources.list.d/llvm-21.list
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq llvm-21 llvm-21-dev lld-21 libclang-21-dev liblld-21-dev zlib1g-dev libzstd-dev cmake ninja-build
-        timeout-minutes: 10
+          LLVM_TARBALL="zig+llvm+lld+clang-x86_64-linux-musl-0.16.0-dev.104+689461e31"
+          LLVM_URL="https://ziglang.org/deps/${LLVM_TARBALL}.tar.xz"
+          echo "Downloading ${LLVM_URL}..."
+          curl -fsSL "${LLVM_URL}" | tar -xJ -C "$HOME"
+          echo "LLVM_PREFIX=$HOME/${LLVM_TARBALL}" >> "$GITHUB_ENV"
+          ls "$HOME/${LLVM_TARBALL}/bin/" | head -5
+        timeout-minutes: 15
 
-      - name: Build sig with cmake (stage 1+2 with LLVM)
+      - name: Install build tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build
+        timeout-minutes: 5
+
+      - name: Build sig with cmake
         run: |
           mkdir build && cd build
           cmake .. -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="/usr/lib/llvm-21;/usr" \
+            -DCMAKE_PREFIX_PATH="$LLVM_PREFIX" \
             -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap-sig" \
             -DZIG_TARGET_TRIPLE="x86_64-linux-musl" \
             -DZIG_TARGET_MCPU=baseline \
-            -DZIG_STATIC_ZLIB=ON \
-            -DZIG_STATIC_ZSTD=ON
+            -DZIG_STATIC=ON \
+            -DZIG_NO_LIB=ON \
+            -GNinja
           ninja install -j$(nproc)
           cd ..
           bootstrap-sig/bin/sig version
@@ -111,16 +118,12 @@ jobs:
           chmod +x bootstrap-sig/bin/sig
           echo "$PWD/bootstrap-sig/bin" >> "$GITHUB_PATH"
 
-      - name: Install LLVM 21
+      - name: Download pre-built LLVM+Clang+LLD
         run: |
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | sudo tee /etc/apt/sources.list.d/llvm-21.list
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq llvm-21-dev lld-21 libclang-21-dev liblld-21-dev zlib1g-dev libzstd-dev
-          for lib in libz.a libz.so libzstd.a libzstd.so; do
-            [ -e "/usr/lib/x86_64-linux-gnu/$lib" ] && sudo ln -sf "/usr/lib/x86_64-linux-gnu/$lib" "/usr/lib/llvm-21/lib/$lib"
-          done
-        timeout-minutes: 10
+          LLVM_TARBALL="zig+llvm+lld+clang-x86_64-linux-musl-0.16.0-dev.104+689461e31"
+          curl -fsSL "https://ziglang.org/deps/${LLVM_TARBALL}.tar.xz" | tar -xJ -C "$HOME"
+          echo "LLVM_PREFIX=$HOME/${LLVM_TARBALL}" >> "$GITHUB_ENV"
+        timeout-minutes: 15
 
       - name: Build sig for ${{ matrix.target }}
         run: |
@@ -131,7 +134,7 @@ jobs:
             -Dstatic-llvm \
             -Dno-lib \
             -Dno-langref \
-            --search-prefix /usr/lib/llvm-21 \
+            --search-prefix "$LLVM_PREFIX" \
             --prefix "sig-${VERSION}-${{ matrix.target }}" \
             --maxrss 0
         timeout-minutes: 120
