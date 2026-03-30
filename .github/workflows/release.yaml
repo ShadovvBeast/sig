@@ -1,4 +1,4 @@
-# [sig] Release pipeline — use stable sig + LLVM to build all 4 platforms
+# [sig] Release pipeline — cmake bootstrap + LLVM builds for all 4 platforms
 name: release
 
 on:
@@ -20,7 +20,62 @@ permissions:
   contents: write
 
 jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SIG_VER="${{ inputs.version }}"
+          else
+            SIG_MAJOR=$(grep -oP 'sig_version.*major = \K\d+' build.sig)
+            SIG_MINOR=$(grep -oP 'sig_version.*minor = \K\d+' build.sig)
+            SIG_PATCH=$(grep -oP 'sig_version.*patch = \K\d+' build.sig)
+            SIG_PRE=$(grep -oP 'sig_version.*pre = "\K[^"]+' build.sig || true)
+            [ -n "$SIG_PRE" ] && SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}-${SIG_PRE}" || SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}"
+          fi
+          ZIG_MAJOR=$(grep -oP 'zig_version.*major = \K\d+' build.sig)
+          ZIG_MINOR=$(grep -oP 'zig_version.*minor = \K\d+' build.sig)
+          ZIG_PATCH=$(grep -oP 'zig_version.*patch = \K\d+' build.sig)
+          VERSION="${SIG_VER}+zig${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}.$(git rev-parse --short=7 HEAD)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Install LLVM 21
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | sudo tee /etc/apt/sources.list.d/llvm-21.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq llvm-21-dev lld-21 libclang-21-dev liblld-21-dev zlib1g-dev libzstd-dev cmake ninja-build
+        timeout-minutes: 10
+
+      - name: Build sig with cmake (stage 1+2 with LLVM)
+        run: |
+          mkdir build && cd build
+          cmake .. -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="/usr/lib/llvm-21" \
+            -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap-sig" \
+            -DZIG_TARGET_TRIPLE="x86_64-linux-musl" \
+            -DZIG_TARGET_MCPU=baseline
+          ninja install -j$(nproc)
+          cd ..
+          bootstrap-sig/bin/sig version
+        timeout-minutes: 60
+
+      - name: Upload bootstrap compiler
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap-sig
+          path: bootstrap-sig/
+
   build:
+    needs: bootstrap
     strategy:
       fail-fast: false
       matrix:
@@ -38,42 +93,21 @@ jobs:
             zig_target: x86_64-windows
             ext: zip
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
+    env:
+      VERSION: ${{ needs.bootstrap.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Resolve version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SIG_VER="${{ inputs.version }}"
-          else
-            SIG_MAJOR=$(grep -oP 'sig_version.*major = \K\d+' build.sig)
-            SIG_MINOR=$(grep -oP 'sig_version.*minor = \K\d+' build.sig)
-            SIG_PATCH=$(grep -oP 'sig_version.*patch = \K\d+' build.sig)
-            SIG_PRE=$(grep -oP 'sig_version.*pre = "\K[^"]+' build.sig || true)
-            if [ -n "$SIG_PRE" ]; then
-              SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}-${SIG_PRE}"
-            else
-              SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}"
-            fi
-          fi
-          ZIG_MAJOR=$(grep -oP 'zig_version.*major = \K\d+' build.sig)
-          ZIG_MINOR=$(grep -oP 'zig_version.*minor = \K\d+' build.sig)
-          ZIG_PATCH=$(grep -oP 'zig_version.*patch = \K\d+' build.sig)
-          ZIG_VER="${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}"
-          SIG_HASH=$(git rev-parse --short=7 HEAD)
-          VERSION="${SIG_VER}+zig${ZIG_VER}.${SIG_HASH}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-
-      - name: Install Sig compiler
-        uses: ./tools/setup-sig
+      - name: Download bootstrap compiler
+        uses: actions/download-artifact@v4
         with:
-          version: latest
+          name: bootstrap-sig
+          path: bootstrap-sig
+      - name: Install bootstrap sig
+        run: |
+          chmod +x bootstrap-sig/bin/sig
+          echo "$PWD/bootstrap-sig/bin" >> "$GITHUB_PATH"
 
       - name: Install LLVM 21
         run: |
@@ -147,10 +181,10 @@ jobs:
             ${{ env.ARCHIVE }}.sha256
 
   release:
-    needs: build
+    needs: [bootstrap, build]
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.build.outputs.version }}
+      VERSION: ${{ needs.bootstrap.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - name: Download all artifacts
@@ -159,18 +193,13 @@ jobs:
           path: artifacts
           pattern: sig-*
           merge-multiple: true
-      - name: Checksums and release
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd artifacts
           cat *.sha256 > sha256sums.txt
-          cat sha256sums.txt
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            PRERELEASE="${{ inputs.prerelease == 'true' && '--prerelease' || '' }}"
-          else
-            PRERELEASE="--prerelease"
-          fi
+          PRERELEASE="${{ (github.event_name == 'workflow_dispatch' && inputs.prerelease == 'true') && '--prerelease' || '--prerelease' }}"
           gh release create "sig-${VERSION}" --title "Sig ${VERSION}" \
             --notes "Sig ${VERSION}
 
@@ -181,5 +210,5 @@ jobs:
           | macOS aarch64 | \`sig-${VERSION}-aarch64-macos.tar.xz\` |
           | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
 
-          Built with LLVM 21 (ReleaseSafe). Checksums in sha256sums.txt." \
+          Built with LLVM 21. Checksums in sha256sums.txt." \
             ${PRERELEASE} sig-*.tar.xz sig-*.zip sha256sums.txt
