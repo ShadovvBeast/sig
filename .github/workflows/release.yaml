@@ -124,12 +124,12 @@ jobs:
           echo "$PWD/bootstrap-sig/bin" >> "$GITHUB_PATH"
           bootstrap-sig/bin/sig version
 
-      - name: Install LLVM 19
+      - name: Install LLVM 21
         run: |
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm-19.list
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | sudo tee /etc/apt/sources.list.d/llvm-21.list
           sudo apt-get update -qq
-          sudo apt-get install -y -qq llvm-19-dev lld-19 libclang-19-dev liblld-19-dev
+          sudo apt-get install -y -qq llvm-21-dev lld-21 libclang-21-dev liblld-21-dev
         timeout-minutes: 10
 
       - name: Build sig for ${{ matrix.target }}
@@ -153,6 +153,29 @@ jobs:
             --prefix "sig-${VERSION}-${{ matrix.target }}" \
             --maxrss 0
         timeout-minutes: 10
+
+      - name: Run side-by-side benchmarks
+        if: matrix.target == 'x86_64-linux'
+        run: |
+          echo "Running sig build --benchmark (side-by-side comparison)..."
+          mkdir -p benchmark-results
+          # Use the freshly-built release binary for benchmarks
+          SIG_BIN="sig-${VERSION}-x86_64-linux/bin/sig"
+          if [ -x "$SIG_BIN" ]; then
+            "$SIG_BIN" build --benchmark 2>&1 | tee benchmark-results/release-benchmark.txt
+          else
+            sig build --benchmark 2>&1 | tee benchmark-results/release-benchmark.txt
+          fi
+        timeout-minutes: 30
+        continue-on-error: true
+
+      - name: Upload benchmark results
+        if: matrix.target == 'x86_64-linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results/
+          if-no-files-found: ignore
 
       - name: Package tarball
         if: matrix.ext == 'tar.xz'
@@ -232,7 +255,7 @@ jobs:
           | macOS aarch64 | \`sig-${VERSION}-aarch64-macos.tar.xz\` |
           | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
 
-          All release binaries built with LLVM 19 (ReleaseSafe).
+          All release binaries built with LLVM 21 (ReleaseSafe).
 
           Checksums are in \`sha256sums.txt\`." \
             ${PRERELEASE} \
