@@ -263,62 +263,29 @@ pub fn build(b: *std.Build) !void {
     const enable_logging = b.option(bool, "log", "Enable debug logging with --debug-log") orelse is_debug;
     const enable_link_snapshots = b.option(bool, "link-snapshot", "Whether to enable linker state snapshots") orelse false;
 
-    const opt_version_string = b.option([]const u8, "version-string", "Override Zig version string. Default is to find out with git.");
+    // [sig] Version string: use our own constants, not git describe.
+    // Format: "{zig_major}.{zig_minor}.{zig_patch}" + optional git commit info.
+    const opt_version_string = b.option([]const u8, "version-string", "Override Zig version string. Default derives from build.sig constants + git rev-parse.");
     const version_slice = if (opt_version_string) |version| version else v: {
-        if (!std.process.can_spawn) {
-            std.debug.print("error: version info cannot be retrieved from git. Zig version must be provided using -Dversion-string\n", .{});
-            std.process.exit(1);
-        }
         const version_string = b.fmt("{d}.{d}.{d}", .{ zig_version.major, zig_version.minor, zig_version.patch });
 
+        if (!std.process.can_spawn) break :v version_string;
+
+        // Get commit hash and height from git — no git describe, no tag matching.
         var code: u8 = undefined;
-        const git_describe_untrimmed = b.runAllowFail(&[_][]const u8{
-            "git",
-            "-C", b.build_root.path orelse ".", // affects the --git-dir argument
-            "--git-dir", ".git", // affected by the -C argument
-            "describe", "--match",    "*.*.*", //
-            "--tags",   "--abbrev=9",
-        }, &code, .ignore) catch {
-            break :v version_string;
-        };
-        const git_describe = mem.trim(u8, git_describe_untrimmed, " \n\r");
+        const commit_hash_untrimmed = b.runAllowFail(&[_][]const u8{
+            "git", "-C", b.build_root.path orelse ".",
+            "rev-parse", "--short=9", "HEAD",
+        }, &code, .ignore) catch break :v version_string;
+        const commit_hash = mem.trim(u8, commit_hash_untrimmed, " \n\r");
 
-        switch (mem.countScalar(u8, git_describe, '-')) {
-            0 => {
-                // Tagged release version (e.g. 0.10.0).
-                if (!mem.eql(u8, git_describe, version_string)) {
-                    std.debug.print("Zig version '{s}' does not match Git tag '{s}'\n", .{ version_string, git_describe });
-                    std.process.exit(1);
-                }
-                break :v version_string;
-            },
-            2 => {
-                // Untagged development build (e.g. 0.10.0-dev.2025+ecf0050a9).
-                var it = mem.splitScalar(u8, git_describe, '-');
-                const tagged_ancestor = it.first();
-                const commit_height = it.next().?;
-                const commit_id = it.next().?;
+        const commit_count_untrimmed = b.runAllowFail(&[_][]const u8{
+            "git", "-C", b.build_root.path orelse ".",
+            "rev-list", "--count", "HEAD",
+        }, &code, .ignore) catch break :v version_string;
+        const commit_count = mem.trim(u8, commit_count_untrimmed, " \n\r");
 
-                const ancestor_ver = try std.SemanticVersion.parse(tagged_ancestor);
-                if (zig_version.order(ancestor_ver) != .gt) {
-                    std.debug.print("Zig version '{f}' must be greater than tagged ancestor '{f}'\n", .{ zig_version, ancestor_ver });
-                    std.process.exit(1);
-                }
-
-                // Check that the commit hash is prefixed with a 'g' (a Git convention).
-                if (commit_id.len < 1 or commit_id[0] != 'g') {
-                    std.debug.print("Unexpected `git describe` output: {s}\n", .{git_describe});
-                    break :v version_string;
-                }
-
-                // The version is reformatted in accordance with the https://semver.org specification.
-                break :v b.fmt("{s}-dev.{s}+{s}", .{ version_string, commit_height, commit_id[1..] });
-            },
-            else => {
-                std.debug.print("Unexpected `git describe` output: {s}\n", .{git_describe});
-                break :v version_string;
-            },
-        }
+        break :v b.fmt("{s}-dev.{s}+{s}", .{ version_string, commit_count, commit_hash });
     };
     const version = try b.allocator.dupeZ(u8, version_slice);
     exe_options.addOption([:0]const u8, "version", version);
