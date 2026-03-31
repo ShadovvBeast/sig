@@ -68,13 +68,28 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
-      - name: Download bootstrap sig compiler (0.0.3)
+      - name: Download bootstrap sig compiler (0.0.4-dev)
         run: |
           mkdir -p /tmp/bootstrap-sig
           curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap.tar.xz
           tar -xJf /tmp/bootstrap.tar.xz -C /tmp/bootstrap-sig --strip-components=1
           chmod +x /tmp/bootstrap-sig/bin/sig
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
+
+      # Two-stage bootstrap: 0.0.4-dev doesn't have sigBuildDelegate yet.
+      # Stage 1: compile the patched compiler directly via build-exe (bypasses build system).
+      # Stage 2: use the patched compiler (which has sigBuildDelegate) for sig build.
+      - name: "Stage 1: compile patched compiler via build-exe"
+        run: |
+          mkdir -p /tmp/stage1/bin
+          sig build-exe src/main.zig \
+            -femit-bin=/tmp/stage1/bin/sig \
+            --zig-lib-dir lib \
+            -OReleaseSafe
+          chmod +x /tmp/stage1/bin/sig
+          # Prepend stage1 to PATH so it takes priority
+          echo "/tmp/stage1/bin" >> "$GITHUB_PATH"
+        timeout-minutes: 120
 
       - name: Build sig for ${{ matrix.target }}
         run: |
