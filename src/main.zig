@@ -4967,6 +4967,188 @@ test sanitizeExampleName {
     try std.testing.expectEqualStrings("test_project", try sanitizeExampleName(arena, "test project"));
 }
 
+// [sig] Options for delegating to the sig build runner.
+// Zero allocators — all fields are borrowed slices from cmdBuild's scope.
+const SigBuildDelegateOptions = struct {
+    build_root_path: []const u8,
+    zig_lib_dir: []const u8,
+    local_cache_dir: []const u8,
+    global_cache_dir: []const u8,
+    self_exe_path: []const u8,
+    child_argv: []const []const u8,
+};
+
+// [sig] Compile and spawn the sig build runner (tools/sig_build/main.sig).
+// ZERO ALLOCATORS — all path construction, argv assembly, and process management
+// uses stack buffers and syscalls only. The build runner compilation is delegated
+// to a child `sig build-exe` process (which uses allocators internally, but that's
+// the compiler's own process, not ours).
+fn sigBuildDelegate(
+    io: Io,
+    opts: SigBuildDelegateOptions,
+) void {
+    // 1. Locate tools/sig_build/main.sig relative to zig lib dir (stack buffer)
+    var runner_src_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const runner_src = sigJoinPath(&runner_src_buf, &.{
+        opts.zig_lib_dir, "..", "tools", "sig_build", "main.sig",
+    });
+
+    // Verify the build runner source exists
+    Io.Dir.cwd().access(io, runner_src, .{}) catch {
+        fatal("sig build runner not found at '{s}'\n  Expected: tools/sig_build/main.sig relative to zig lib dir\n  Hint: run the bootstrap script to install the sig build runner", .{runner_src});
+    };
+
+    // 2. Construct module paths for --mod flags (stack buffers)
+    var sig_mod_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const sig_mod_path = sigJoinPath(&sig_mod_buf, &.{ opts.zig_lib_dir, "sig", "sig.zig" });
+
+    var std_mod_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const std_mod_path = sigJoinPath(&std_mod_buf, &.{ opts.zig_lib_dir, "std", "std.zig" });
+
+    // 3. Build output path for the compiled runner binary
+    var runner_bin_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const runner_bin_name = switch (builtin.os.tag) {
+        .windows => "sig_build_runner.exe",
+        else => "sig_build_runner",
+    };
+    const runner_bin = sigJoinPath(&runner_bin_buf, &.{
+        opts.local_cache_dir, runner_bin_name,
+    });
+
+    // 4. Construct -femit-bin=<path> flag and --mod flag values (stack buffers)
+    var emit_flag_buf: [std.Io.Dir.max_path_bytes + 16]u8 = undefined;
+    const emit_flag = sigConcat(&emit_flag_buf, &.{ "-femit-bin=", runner_bin });
+
+    var sig_mod_flag_buf: [std.Io.Dir.max_path_bytes + 8]u8 = undefined;
+    const sig_mod_flag = sigConcat(&sig_mod_flag_buf, &.{ "sig:", sig_mod_path });
+
+    var std_mod_flag_buf: [std.Io.Dir.max_path_bytes + 8]u8 = undefined;
+    const std_mod_flag = sigConcat(&std_mod_flag_buf, &.{ "std:", std_mod_path });
+
+    // 5. Compile the build runner via child process: sig build-exe
+    //    This re-invokes the sig compiler itself, which handles all the
+    //    allocator-heavy compilation internally in its own process.
+    const compile_argv = [_][]const u8{
+        opts.self_exe_path,
+        "build-exe",
+        runner_src,
+        "--mod",
+        sig_mod_flag,
+        "--mod",
+        std_mod_flag,
+        "--cache-dir",
+        opts.local_cache_dir,
+        "--global-cache-dir",
+        opts.global_cache_dir,
+        emit_flag,
+        "--zig-lib-dir",
+        opts.zig_lib_dir,
+    };
+
+    switch (sigSpawnAndWait(io, &compile_argv)) {
+        .exited => |code| {
+            if (code != 0) {
+                if (code == 2) process.exit(2); // Compile errors already reported
+                fatal("sig build runner compilation failed with exit code {d}", .{code});
+            }
+        },
+        .signal => |sig| fatal("sig build runner compilation terminated with signal {t}", .{sig}),
+        else => fatal("sig build runner compilation crashed", .{}),
+    }
+
+    // 6. Build argument vector for the runner using fixed-capacity stack array.
+    //    Layout: [runner_bin, self_exe, zig_lib, build_root, local_cache, global_cache, user_args...]
+    const fixed_args = 6;
+    const max_runner_argv = fixed_args + 256;
+    var runner_argv_buf: [max_runner_argv][]const u8 = undefined;
+    const total_args = fixed_args + opts.child_argv.len;
+    if (total_args > max_runner_argv) {
+        fatal("too many build arguments ({d}), maximum is {d}", .{ opts.child_argv.len, max_runner_argv - fixed_args });
+    }
+    runner_argv_buf[0] = runner_bin;
+    runner_argv_buf[1] = opts.self_exe_path;
+    runner_argv_buf[2] = opts.zig_lib_dir;
+    runner_argv_buf[3] = opts.build_root_path;
+    runner_argv_buf[4] = opts.local_cache_dir;
+    runner_argv_buf[5] = opts.global_cache_dir;
+    for (opts.child_argv, 0..) |arg, i| {
+        runner_argv_buf[fixed_args + i] = arg;
+    }
+    const runner_argv = runner_argv_buf[0..total_args];
+
+    // 7. Spawn runner and propagate exit code
+    switch (sigSpawnAndWait(io, runner_argv)) {
+        .exited => |code| {
+            if (code == 0) return;
+            if (code == 2) process.exit(2); // Compile errors already reported
+            process.exit(code);
+        },
+        .signal => |sig| fatal("sig build runner terminated with signal {t}", .{sig}),
+        else => fatal("sig build runner crashed", .{}),
+    }
+}
+
+// [sig] Spawn a child process and wait for it to exit. Zero allocators.
+fn sigSpawnAndWait(io: Io, argv: []const []const u8) std.process.Child.Term {
+    if (!process.can_spawn) {
+        fatal("cannot spawn process (platform does not support spawning)", .{});
+    }
+    _ = io.lockStderr(&.{}, .no_color) catch
+        fatal("failed to lock stderr for child process", .{});
+    defer io.unlockStderr();
+    var child = std.process.spawn(io, .{
+        .argv = argv,
+    }) catch |err| fatal("failed to spawn '{s}': {t}", .{ argv[0], err });
+    defer child.kill(io);
+    return child.wait(io) catch |err|
+        fatal("failed to wait for '{s}': {t}", .{ argv[0], err });
+}
+
+// [sig] Join path segments into a stack buffer using the platform separator.
+// Returns a slice into `buf`. Calls `fatal` if the buffer is too small.
+// Zero allocators — pure stack operation.
+fn sigJoinPath(buf: []u8, segments: []const []const u8) []const u8 {
+    const sep = fs.path.sep;
+    var offset: usize = 0;
+    for (segments, 0..) |seg, i| {
+        // Strip trailing separators (except root "/")
+        var s = seg;
+        while (s.len > 1 and s[s.len - 1] == sep) {
+            s = s[0 .. s.len - 1];
+        }
+        // Strip leading separators from non-first segments
+        if (i > 0) {
+            while (s.len > 0 and s[0] == sep) {
+                s = s[1..];
+            }
+        }
+        if (s.len == 0) continue;
+        // Add separator between segments
+        if (i > 0 and offset > 0 and buf[offset - 1] != sep) {
+            if (offset >= buf.len) fatal("sig build runner path exceeds maximum length", .{});
+            buf[offset] = sep;
+            offset += 1;
+        }
+        if (offset + s.len > buf.len) fatal("sig build runner path exceeds maximum length", .{});
+        @memcpy(buf[offset..][0..s.len], s);
+        offset += s.len;
+    }
+    return buf[0..offset];
+}
+
+// [sig] Concatenate slices into a stack buffer (no separator).
+// Returns a slice into `buf`. Calls `fatal` if the buffer is too small.
+// Zero allocators — pure stack operation.
+fn sigConcat(buf: []u8, slices: []const []const u8) []const u8 {
+    var offset: usize = 0;
+    for (slices) |s| {
+        if (offset + s.len > buf.len) fatal("sig build runner buffer exceeds maximum length", .{});
+        @memcpy(buf[offset..][0..s.len], s);
+        offset += s.len;
+    }
+    return buf[0..offset];
+}
+
 fn cmdBuild(gpa: Allocator, arena: Allocator, io: Io, args: []const []const u8, environ_map: *process.Environ.Map) !void {
     dev.check(.build_command);
 
@@ -5238,9 +5420,44 @@ fn cmdBuild(gpa: Allocator, arena: Allocator, io: Io, args: []const []const u8, 
         .build_file = build_file,
     });
 
-    // [sig] Future: when build.sig uses the sig_build API instead of std.Build,
-    // this is where we'll delegate to tools/sig_build/main.sig. For now,
-    // build.sig uses std.Build and goes through the standard build runner.
+    // [sig] Delegate to sig build runner when build.sig is found
+    // and no ZIG_BUILD_RUNNER override is set.
+    // ZERO ALLOCATORS in the delegation path — all path construction uses stack
+    // buffers, compilation is delegated to a child sig process.
+    if (override_build_runner == null and
+        mem.eql(u8, build_root.build_zig_basename, Package.build_sig_basename))
+    {
+        std.log.info("using sig build runner for {s}", .{Package.build_sig_basename}); // [sig] verbose logging
+
+        // [sig] Resolve zig lib dir from override or self_exe_path (stack buffer, zero allocators).
+        // The zig lib dir is typically <exe_dir>/../lib or provided via ZIG_LIB_DIR.
+        var zig_lib_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+        const zig_lib_dir = override_lib_dir orelse blk: {
+            const exe_dir = fs.path.dirname(self_exe_path) orelse ".";
+            break :blk sigJoinPath(&zig_lib_buf, &.{ exe_dir, "..", "lib" });
+        };
+
+        // [sig] Resolve local cache dir (stack buffer, zero allocators).
+        var local_cache_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+        const local_cache_dir = override_local_cache_dir orelse blk: {
+            const br_path = build_root.directory.path orelse ".";
+            break :blk sigJoinPath(&local_cache_buf, &.{ br_path, introspect.default_local_zig_cache_basename });
+        };
+
+        // [sig] Resolve global cache dir. If not overridden, use local cache as fallback.
+        const global_cache_dir = override_global_cache_dir orelse local_cache_dir;
+
+        return sigBuildDelegate(io, .{
+            .build_root_path = build_root.directory.path orelse ".",
+            .zig_lib_dir = zig_lib_dir,
+            .local_cache_dir = local_cache_dir,
+            .global_cache_dir = global_cache_dir,
+            .self_exe_path = self_exe_path,
+            .child_argv = child_argv.items,
+        });
+    }
+
+    std.log.info("using standard Zig build runner for {s}", .{build_root.build_zig_basename}); // [sig] verbose logging
 
     // This `init` calls `fatal` on error.
     var dirs: Compilation.Directories = .init(

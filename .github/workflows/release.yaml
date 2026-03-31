@@ -20,7 +20,8 @@ permissions:
   contents: write
 
 env:
-  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v1/bootstrap-sig-x86_64-linux.tar.gz
+  # 0.0.3 release includes FileExt.sig + sigBuildDelegate — used to bootstrap 0.0.4
+  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-0.0.3-dev%2Bzig0.16.0.0637de8/sig-0.0.3-dev%2Bzig0.16.0.0637de8-x86_64-linux.tar.xz
 
 jobs:
   build:
@@ -67,10 +68,11 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
-      - name: Download bootstrap sig compiler
+      - name: Download bootstrap sig compiler (0.0.3)
         run: |
           mkdir -p /tmp/bootstrap-sig
-          curl -fsSL "$BOOTSTRAP_URL" | tar -xz -C /tmp/bootstrap-sig
+          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap.tar.xz
+          tar -xJf /tmp/bootstrap.tar.xz -C /tmp/bootstrap-sig --strip-components=1
           chmod +x /tmp/bootstrap-sig/bin/sig
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
 

@@ -9,6 +9,7 @@
 /// Invoke via: `sig build [step-names...] [-Dkey=value] [-j N]`
 const std = @import("std");
 const sig = @import("sig");
+const builtin = @import("builtin");
 
 // ── sig module aliases ──────────────────────────────────────────────────────
 const containers = sig.containers;
@@ -24,23 +25,23 @@ pub const SigError = sig.SigError;
 // ── Capacity constants ──────────────────────────────────────────────────────
 // All fixed limits for the build runner. Exceeding any of these returns
 // SigError.CapacityExceeded — no silent fallback, no allocator.
-const MAX_STEPS = 256;
-const MAX_DEPS_PER_STEP = 32;
-const MAX_MODULES = 128;
-const MAX_IMPORTS_PER_MODULE = 64;
-const MAX_OPTIONS = 128;
-const MAX_CACHE_ENTRIES = 4096;
-const MAX_THREADS = 64;
-const MAX_WORK_QUEUE = 256;
-const MAX_CMD_ARGS = 128;
-const MAX_ENV_VARS = 64;
-const PATH_BUF_SIZE = 4096;
-const NAME_BUF_SIZE = 64;
-const DESC_BUF_SIZE = 256;
-const VALUE_BUF_SIZE = 256;
-const OUTPUT_BUF_SIZE = 65536;
-const STDERR_CAPTURE_SIZE = 8192;
-const HASH_CHUNK_SIZE = 8192;
+pub const MAX_STEPS = 256;
+pub const MAX_DEPS_PER_STEP = 32;
+pub const MAX_MODULES = 128;
+pub const MAX_IMPORTS_PER_MODULE = 64;
+pub const MAX_OPTIONS = 128;
+pub const MAX_CACHE_ENTRIES = 4096;
+pub const MAX_THREADS = 64;
+pub const MAX_WORK_QUEUE = 256;
+pub const MAX_CMD_ARGS = 128;
+pub const MAX_ENV_VARS = 64;
+pub const PATH_BUF_SIZE = 4096;
+pub const NAME_BUF_SIZE = 64;
+pub const DESC_BUF_SIZE = 256;
+pub const VALUE_BUF_SIZE = 256;
+pub const OUTPUT_BUF_SIZE = 65536;
+pub const STDERR_CAPTURE_SIZE = 8192;
+pub const HASH_CHUNK_SIZE = 8192;
 
 // ── Type aliases ────────────────────────────────────────────────────────────
 /// Index into the Step_Registry entries array.
@@ -630,6 +631,126 @@ pub const Dependency_Graph = struct {
             }
         }
     }
+
+    /// Detect and format a dependency cycle for error reporting.
+    /// Uses DFS among unvisited nodes (those with non-zero in-degree after
+    /// Kahn's algorithm) to find a cycle, then formats it as
+    /// "step A -> step B -> ... -> step A" into `buf`.
+    /// Returns the formatted cycle path string, or a fallback message.
+    pub fn findCyclePath(self: *const Dependency_Graph, registry: *const Step_Registry, buf: *[PATH_BUF_SIZE]u8) []const u8 {
+        // Recompute in-degrees and run Kahn's to find unvisited nodes.
+        var in_degree: [MAX_STEPS]usize = [_]usize{0} ** MAX_STEPS;
+        for (0..self.node_count) |i| {
+            in_degree[i] = self.adj_counts[i];
+        }
+
+        var queue: containers.BoundedDeque(Step_Handle, MAX_STEPS) = .{};
+        for (0..self.node_count) |i| {
+            if (in_degree[i] == 0) {
+                queue.pushBack(@intCast(i)) catch {};
+            }
+        }
+
+        var visited: containers.BoundedBitSet(MAX_STEPS) = .{};
+        while (queue.popFront()) |node| {
+            visited.set(node) catch {};
+            const node_idx: usize = node;
+            for (0..self.node_count) |j| {
+                for (self.adj[j][0..self.adj_counts[j]]) |dep| {
+                    if (@as(usize, dep) == node_idx) {
+                        in_degree[j] -= 1;
+                        if (in_degree[j] == 0) {
+                            queue.pushBack(@intCast(j)) catch {};
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Find a starting node that is part of a cycle (not visited).
+        var start: ?usize = null;
+        for (0..self.node_count) |i| {
+            if (!visited.isSet(i)) {
+                start = i;
+                break;
+            }
+        }
+
+        if (start == null) {
+            const fallback = "unknown cycle";
+            @memcpy(buf[0..fallback.len], fallback);
+            return buf[0..fallback.len];
+        }
+
+        // DFS from `start` to trace the cycle path.
+        var path_indices: [MAX_STEPS]usize = undefined;
+        var path_len: usize = 0;
+        var on_stack: containers.BoundedBitSet(MAX_STEPS) = .{};
+        var current = start.?;
+
+        // Walk through unvisited dependencies to trace the cycle.
+        while (path_len < MAX_STEPS) {
+            path_indices[path_len] = current;
+            path_len += 1;
+            on_stack.set(current) catch break;
+
+            // Find the next unvisited dependency of `current`.
+            var next: ?usize = null;
+            for (self.adj[current][0..self.adj_counts[current]]) |dep| {
+                const dep_idx: usize = dep;
+                if (!visited.isSet(dep_idx)) {
+                    if (on_stack.isSet(dep_idx)) {
+                        // Found the cycle back-edge. Format the cycle.
+                        var offset: usize = 0;
+                        // Find where dep_idx appears in path to get the cycle portion.
+                        var cycle_start: usize = 0;
+                        for (0..path_len) |k| {
+                            if (path_indices[k] == dep_idx) {
+                                cycle_start = k;
+                                break;
+                            }
+                        }
+                        // Format: "A -> B -> ... -> A"
+                        var k = cycle_start;
+                        while (k < path_len) : (k += 1) {
+                            const idx = path_indices[k];
+                            const name = registry.entries[idx].name[0..registry.entries[idx].name_len];
+                            if (offset + name.len + 4 > PATH_BUF_SIZE) break;
+                            if (k > cycle_start) {
+                                @memcpy(buf[offset..][0..4], " -> ");
+                                offset += 4;
+                            }
+                            @memcpy(buf[offset..][0..name.len], name);
+                            offset += name.len;
+                        }
+                        // Close the cycle: " -> A"
+                        const close_name = registry.entries[dep_idx].name[0..registry.entries[dep_idx].name_len];
+                        if (offset + 4 + close_name.len <= PATH_BUF_SIZE) {
+                            @memcpy(buf[offset..][0..4], " -> ");
+                            offset += 4;
+                            @memcpy(buf[offset..][0..close_name.len], close_name);
+                            offset += close_name.len;
+                        }
+                        return buf[0..offset];
+                    }
+                    next = dep_idx;
+                    break;
+                }
+            }
+
+            if (next) |n| {
+                current = n;
+            } else {
+                break;
+            }
+        }
+
+        // Fallback if DFS didn't find a clean cycle (shouldn't happen).
+        const fallback = "cycle detected among unvisited nodes";
+        @memcpy(buf[0..fallback.len], fallback);
+        return buf[0..fallback.len];
+    }
 };
 
 // ── Cache system ─────────────────────────────────────────────────────────
@@ -1206,6 +1327,9 @@ pub const Thread_Pool = struct {
     pub const Completion_Result = struct {
         step_handle: Step_Handle,
         succeeded: bool,
+        exit_code: u8 = 0,
+        stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined,
+        stderr_len: usize = 0,
         output_buf: [OUTPUT_BUF_SIZE]u8 = undefined,
         output_len: usize = 0,
     };
@@ -1279,6 +1403,11 @@ pub const Thread_Pool = struct {
         for (0..n) |i| {
             out[i].step_handle = self.completed_steps[i].step_handle;
             out[i].succeeded = self.completed_steps[i].succeeded;
+            out[i].exit_code = self.completed_steps[i].exit_code;
+            out[i].stderr_len = self.completed_steps[i].stderr_len;
+            if (out[i].stderr_len > 0) {
+                @memcpy(out[i].stderr_buf[0..out[i].stderr_len], self.completed_steps[i].stderr_buf[0..out[i].stderr_len]);
+            }
             out[i].output_len = self.completed_steps[i].output_len;
             if (out[i].output_len > 0) {
                 @memcpy(out[i].output_buf[0..out[i].output_len], self.completed_steps[i].output_buf[0..out[i].output_len]);
@@ -1321,13 +1450,21 @@ pub const Thread_Pool = struct {
             // Execute the step with a per-invocation output buffer on the stack.
             var output_buf: [OUTPUT_BUF_SIZE]u8 = undefined;
             var output_len: usize = 0;
+            var stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined;
+            var stderr_len: usize = 0;
+            var exit_code: u8 = 0;
             var ctx = Step_Context{ .step_handle = item.step_handle };
-            const succeeded = if (item.step_fn(&ctx)) |_| true else |_| false;
+            const succeeded = if (item.step_fn(&ctx)) |_| true else |_| blk: {
+                exit_code = 1; // Default non-zero exit code for failed steps.
+                break :blk false;
+            };
 
-            // For now, output_len stays 0 — actual output capture will be
+            // For now, output_len and stderr_len stay 0 — actual capture will be
             // wired when Step_Context gets stdout/stderr redirection in task 1.11.
             _ = &output_buf;
             _ = &output_len;
+            _ = &stderr_buf;
+            _ = &stderr_len;
 
             // Lock → record completion → signal → unlock.
             pool.mutex.lockUncancelable(pool.io);
@@ -1336,6 +1473,11 @@ pub const Thread_Pool = struct {
                 var result = &pool.completed_steps[pool.completed_count];
                 result.step_handle = item.step_handle;
                 result.succeeded = succeeded;
+                result.exit_code = exit_code;
+                result.stderr_len = stderr_len;
+                if (stderr_len > 0) {
+                    @memcpy(result.stderr_buf[0..stderr_len], stderr_buf[0..stderr_len]);
+                }
                 result.output_len = output_len;
                 if (output_len > 0) {
                     @memcpy(result.output_buf[0..output_len], output_buf[0..output_len]);
@@ -1376,6 +1518,7 @@ pub fn runScheduler(
     cache: *Cache_Map,
     pool: *Thread_Pool,
     io: std.Io,
+    verbose: bool,
 ) Schedule_Summary {
     var summary: Schedule_Summary = .{};
     summary.total = registry.count;
@@ -1399,7 +1542,7 @@ pub fn runScheduler(
             if (pool.active_count > 0 or pool.work_queue.count > 0) {
                 pool.waitAll();
                 // Process completions and loop again.
-                processCompletions(pool, registry, graph, &completed_bits, &failed_bits, &skipped_bits, &done_bits, &dispatched_bits, &summary, io);
+                processCompletions(pool, registry, graph, &completed_bits, &failed_bits, &skipped_bits, &done_bits, &dispatched_bits, &summary, io, verbose);
                 continue;
             }
             // Truly done — no ready steps and no active work.
@@ -1423,12 +1566,18 @@ pub fn runScheduler(
                 done_bits.set(idx) catch {};
                 summary.cached += 1;
                 summary.succeeded += 1;
+                if (verbose) {
+                    printMsg(io, "  CACHE: {s}", .{step_name});
+                }
                 continue;
             }
 
             // Cache miss — dispatch to thread pool.
             entry.state = .running;
             dispatched_bits.set(idx) catch {};
+            if (verbose) {
+                printMsg(io, "  START: {s}", .{step_name});
+            }
             pool.submit(.{
                 .step_handle = handle,
                 .step_fn = entry.make_fn,
@@ -1445,7 +1594,7 @@ pub fn runScheduler(
 
         // 4. Wait for at least one completion before looping.
         pool.waitAll();
-        processCompletions(pool, registry, graph, &completed_bits, &failed_bits, &skipped_bits, &done_bits, &dispatched_bits, &summary, io);
+        processCompletions(pool, registry, graph, &completed_bits, &failed_bits, &skipped_bits, &done_bits, &dispatched_bits, &summary, io, verbose);
     }
 
     // Mark any remaining pending steps that were never reached as skipped.
@@ -1472,23 +1621,28 @@ fn processCompletions(
     dispatched_bits: *containers.BoundedBitSet(MAX_STEPS),
     summary: *Schedule_Summary,
     io: std.Io,
+    verbose: bool,
 ) void {
     var results: [MAX_WORK_QUEUE]Thread_Pool.Completion_Result = undefined;
     const count = pool.drainCompleted(&results);
 
     _ = dispatched_bits;
-    _ = io;
 
     for (0..count) |i| {
         const handle = results[i].step_handle;
         const idx: usize = handle;
         const entry = &registry.entries[idx];
+        const step_name = entry.name[0..entry.name_len];
 
         if (results[i].succeeded) {
             entry.state = .succeeded;
             completed_bits.set(idx) catch {};
             done_bits.set(idx) catch {};
             summary.succeeded += 1;
+
+            if (verbose) {
+                printMsg(io, "  DONE:  {s}", .{step_name});
+            }
 
             // Flush buffered output atomically.
             if (results[i].output_len > 0) {
@@ -1502,6 +1656,12 @@ fn processCompletions(
             failed_bits.set(idx) catch {};
             done_bits.set(idx) catch {};
             summary.failed += 1;
+
+            // Report step failure with details.
+            printMsg(io, "FAIL: step '{s}' exited with code {d}", .{ step_name, results[i].exit_code });
+            if (results[i].stderr_len > 0) {
+                printMsg(io, "  stderr: {s}", .{results[i].stderr_buf[0..results[i].stderr_len]});
+            }
 
             // Propagate failure: mark all transitive dependents as skipped.
             propagateSkips(graph, handle, registry, skipped_bits, done_bits, summary);
@@ -2250,25 +2410,37 @@ pub fn verifySelfHosting(
     }
 }
 
+// ── Runner arguments (fixed positional args from the compiler) ───────────────
+
+/// Parsed fixed positional arguments from the compiler's sigBuildDelegate.
+/// Layout: argv[0]=runner, argv[1]=compiler, argv[2]=zig_lib_dir,
+///         argv[3]=build_root, argv[4]=local_cache, argv[5]=global_cache.
+pub const Runner_Args = struct {
+    runner_binary: [PATH_BUF_SIZE]u8 = undefined,
+    runner_binary_len: usize = 0,
+    compiler_path: [PATH_BUF_SIZE]u8 = undefined,
+    compiler_path_len: usize = 0,
+    zig_lib_dir: [PATH_BUF_SIZE]u8 = undefined,
+    zig_lib_dir_len: usize = 0,
+    build_root: [PATH_BUF_SIZE]u8 = undefined,
+    build_root_len: usize = 0,
+    local_cache_dir: [PATH_BUF_SIZE]u8 = undefined,
+    local_cache_dir_len: usize = 0,
+    global_cache_dir: [PATH_BUF_SIZE]u8 = undefined,
+    global_cache_dir_len: usize = 0,
+};
+
 // ── CLI configuration ────────────────────────────────────────────────────────
 
-/// Parsed CLI configuration. All fields are stack-allocated.
-const Cli_Config = struct {
+/// Parsed CLI configuration from user arguments (argv[6+]).
+/// All fields are stack-allocated.
+pub const Cli_Config = struct {
     /// Requested step names from positional arguments.
     requested_steps: containers.BoundedVec([]const u8, 32) = .{},
     /// -D options parsed into the option map.
     options: Option_Map = .{},
     /// -j thread count (0 = auto-detect).
     thread_count: usize = 0,
-    /// --build-file override (empty = default "build.sig").
-    build_file: [PATH_BUF_SIZE]u8 = undefined,
-    build_file_len: usize = 0,
-    /// --build-root override (empty = cwd).
-    build_root: [PATH_BUF_SIZE]u8 = undefined,
-    build_root_len: usize = 0,
-    /// --cache-dir override (empty = default ".sig-cache").
-    cache_dir: [PATH_BUF_SIZE]u8 = undefined,
-    cache_dir_len: usize = 0,
     /// --benchmark mode.
     benchmark: bool = false,
     /// --verbose mode.
@@ -2291,7 +2463,7 @@ const DEFAULT_CACHE_FILE = "cache.bin";
 
 /// Parse a `-j` argument into a thread count.
 /// Accepts `-jN` (e.g. `-j8`) or `-j N` (value in next arg, handled by caller).
-fn parseThreadCount(arg: []const u8) ?usize {
+pub fn parseThreadCount(arg: []const u8) ?usize {
     // "-jN" form: digits immediately follow "-j".
     if (arg.len > 2) {
         return std.fmt.parseInt(usize, arg[2..], 10) catch null;
@@ -2301,7 +2473,7 @@ fn parseThreadCount(arg: []const u8) ?usize {
 
 /// Parse a `--key=value` long option. Returns the value after `=`, or null
 /// if the argument doesn't contain `=` (value is in the next arg).
-fn parseLongOptionValue(arg: []const u8) ?[]const u8 {
+pub fn parseLongOptionValue(arg: []const u8) ?[]const u8 {
     if (std.mem.indexOfScalar(u8, arg, '=')) |eq_pos| {
         return arg[eq_pos + 1 ..];
     }
@@ -2309,7 +2481,7 @@ fn parseLongOptionValue(arg: []const u8) ?[]const u8 {
 }
 
 /// Write an error message to stderr and exit with code 1.
-fn fatal(io: std.Io, comptime fmt: []const u8, args: anytype) noreturn {
+pub fn fatal(io: std.Io, comptime fmt: []const u8, args: anytype) noreturn {
     const stderr = std.Io.File.stderr();
     var buf: [4096]u8 = undefined;
     if (std.fmt.bufPrint(&buf, "error: " ++ fmt ++ "\n", args)) |msg| {
@@ -2321,7 +2493,7 @@ fn fatal(io: std.Io, comptime fmt: []const u8, args: anytype) noreturn {
 }
 
 /// Write an informational message to stdout.
-fn printMsg(io: std.Io, comptime fmt: []const u8, args: anytype) void {
+pub fn printMsg(io: std.Io, comptime fmt: []const u8, args: anytype) void {
     const stdout = std.Io.File.stdout();
     var buf: [4096]u8 = undefined;
     const msg = std.fmt.bufPrint(&buf, fmt ++ "\n", args) catch return;
@@ -2329,7 +2501,7 @@ fn printMsg(io: std.Io, comptime fmt: []const u8, args: anytype) void {
 }
 
 /// Print the schedule summary to stdout.
-fn printSummary(io: std.Io, summary: *const Schedule_Summary) void {
+pub fn printSummary(io: std.Io, summary: *const Schedule_Summary) void {
     var buf: [512]u8 = undefined;
     const msg = std.fmt.bufPrint(&buf, "\nBuild summary: {d} total, {d} succeeded, {d} cached, {d} failed, {d} skipped\n", .{
         summary.total,
@@ -2342,12 +2514,178 @@ fn printSummary(io: std.Io, summary: *const Schedule_Summary) void {
     stdout.writeStreamingAll(io, msg) catch {};
 }
 
+/// Format a capacity error message with registry/buffer name and limits.
+/// Called by build_host.sig and build.sig when catching capacity errors.
+pub fn reportCapacityError(io: std.Io, registry_name: []const u8, current: usize, maximum: usize) void {
+    printMsg(io, "CapacityExceeded: {s} ({d}/{d})", .{ registry_name, current, maximum });
+}
+
+// ── build host compilation ────────────────────────────────────────────────────
+
+/// Compile the build host with build.sig wired as @import("build").
+///
+/// Instead of compiling build.sig directly as an executable, we compile
+/// build_host.sig — a minimal entry point that imports build.sig as a module,
+/// creates a Build_Context, calls build.sig's build function, and runs the
+/// scheduler. This is the two-stage compilation approach:
+///
+///   sig build-exe build_host.sig \
+///       --mod build:<build_file_path>       (user's build.sig)
+///       --mod sig_build:<main.sig>          (build runner module)
+///       --mod sig:<sig.zig>                 (sig standard library)
+///       --mod std:<std.zig>                 (zig standard library)
+///
+/// Returns the path to the compiled host binary on success.
+/// On failure, prints diagnostics and calls fatal() (does not return).
+fn compileBuildSig(
+    io: std.Io,
+    build_file_path: []const u8,
+    runner_args: *const Runner_Args,
+    verbose: bool,
+) []const u8 {
+    const compiler_path = runner_args.compiler_path[0..runner_args.compiler_path_len];
+    const zig_lib_dir = runner_args.zig_lib_dir[0..runner_args.zig_lib_dir_len];
+    const local_cache_dir = runner_args.local_cache_dir[0..runner_args.local_cache_dir_len];
+    const global_cache_dir = runner_args.global_cache_dir[0..runner_args.global_cache_dir_len];
+
+    // ── Construct source path: build_host.sig ───────────────────────────
+    // build_host.sig lives alongside main.sig: <zig_lib_dir>/../tools/sig_build/build_host.sig
+    var host_src_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const host_src_segs = [_][]const u8{ zig_lib_dir, "..", "tools", "sig_build", "build_host.sig" };
+    const host_src_path = sig_fs.joinPath(&host_src_buf, &host_src_segs) catch {
+        fatal(io, "failed to construct build_host.sig path", .{});
+    };
+
+    // ── Construct module paths ──────────────────────────────────────────
+    // sig module: <zig_lib_dir>/sig/sig.zig
+    var sig_mod_path_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const sig_mod_segs = [_][]const u8{ zig_lib_dir, "sig", "sig.zig" };
+    const sig_mod_path = sig_fs.joinPath(&sig_mod_path_buf, &sig_mod_segs) catch {
+        fatal(io, "failed to construct sig module path", .{});
+    };
+
+    // sig_build module: <zig_lib_dir>/../tools/sig_build/main.sig
+    // Points to main.sig which exports all pub types and functions.
+    var sig_build_mod_path_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const sig_build_mod_segs = [_][]const u8{ zig_lib_dir, "..", "tools", "sig_build", "main.sig" };
+    const sig_build_mod_path = sig_fs.joinPath(&sig_build_mod_path_buf, &sig_build_mod_segs) catch {
+        fatal(io, "failed to construct sig_build module path", .{});
+    };
+
+    // std module: <zig_lib_dir>/std/std.zig
+    var std_mod_path_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const std_mod_segs = [_][]const u8{ zig_lib_dir, "std", "std.zig" };
+    const std_mod_path = sig_fs.joinPath(&std_mod_path_buf, &std_mod_segs) catch {
+        fatal(io, "failed to construct std module path", .{});
+    };
+
+    // ── Construct emit path ─────────────────────────────────────────────
+    const bin_name = if (builtin.os.tag == .windows) "build_sig_host.exe" else "build_sig_host";
+    var emit_path_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const emit_segs = [_][]const u8{ local_cache_dir, bin_name };
+    const emit_path = sig_fs.joinPath(&emit_path_buf, &emit_segs) catch {
+        fatal(io, "failed to construct emit path", .{});
+    };
+
+    // ── Construct --mod flag values (name:path) ─────────────────────────
+    // build:<build_file_path> (user's build.sig)
+    var build_mod_flag_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const build_prefix = "build:";
+    if (build_prefix.len + build_file_path.len > PATH_BUF_SIZE) fatal(io, "build module flag too long", .{});
+    @memcpy(build_mod_flag_buf[0..build_prefix.len], build_prefix);
+    @memcpy(build_mod_flag_buf[build_prefix.len..][0..build_file_path.len], build_file_path);
+    const build_mod_flag = build_mod_flag_buf[0 .. build_prefix.len + build_file_path.len];
+
+    // sig:path
+    var sig_mod_flag_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const sig_prefix = "sig:";
+    if (sig_prefix.len + sig_mod_path.len > PATH_BUF_SIZE) fatal(io, "sig module flag too long", .{});
+    @memcpy(sig_mod_flag_buf[0..sig_prefix.len], sig_prefix);
+    @memcpy(sig_mod_flag_buf[sig_prefix.len..][0..sig_mod_path.len], sig_mod_path);
+    const sig_mod_flag = sig_mod_flag_buf[0 .. sig_prefix.len + sig_mod_path.len];
+
+    // sig_build:path
+    var sig_build_mod_flag_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const sig_build_prefix = "sig_build:";
+    if (sig_build_prefix.len + sig_build_mod_path.len > PATH_BUF_SIZE) fatal(io, "sig_build module flag too long", .{});
+    @memcpy(sig_build_mod_flag_buf[0..sig_build_prefix.len], sig_build_prefix);
+    @memcpy(sig_build_mod_flag_buf[sig_build_prefix.len..][0..sig_build_mod_path.len], sig_build_mod_path);
+    const sig_build_mod_flag = sig_build_mod_flag_buf[0 .. sig_build_prefix.len + sig_build_mod_path.len];
+
+    // std:path
+    var std_mod_flag_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const std_prefix = "std:";
+    if (std_prefix.len + std_mod_path.len > PATH_BUF_SIZE) fatal(io, "std module flag too long", .{});
+    @memcpy(std_mod_flag_buf[0..std_prefix.len], std_prefix);
+    @memcpy(std_mod_flag_buf[std_prefix.len..][0..std_mod_path.len], std_mod_path);
+    const std_mod_flag = std_mod_flag_buf[0 .. std_prefix.len + std_mod_path.len];
+
+    // ── Construct -femit-bin=<path> flag ────────────────────────────────
+    var emit_flag_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const emit_prefix = "-femit-bin=";
+    if (emit_prefix.len + emit_path.len > PATH_BUF_SIZE) fatal(io, "emit flag too long", .{});
+    @memcpy(emit_flag_buf[0..emit_prefix.len], emit_prefix);
+    @memcpy(emit_flag_buf[emit_prefix.len..][0..emit_path.len], emit_path);
+    const emit_flag = emit_flag_buf[0 .. emit_prefix.len + emit_path.len];
+
+    // ── Build command ───────────────────────────────────────────────────
+    var cmd: Command_Buffer = .{};
+
+    cmd.addArg(compiler_path) catch fatal(io, "compiler path too long for command buffer", .{});
+    cmd.addArg("build-exe") catch fatal(io, "failed to add build-exe arg", .{});
+    cmd.addArg(host_src_path) catch fatal(io, "build host path too long for command buffer", .{});
+    cmd.addArg("--mod") catch fatal(io, "failed to add --mod arg", .{});
+    cmd.addArg(build_mod_flag) catch fatal(io, "build mod flag too long for command buffer", .{});
+    cmd.addArg("--mod") catch fatal(io, "failed to add --mod arg", .{});
+    cmd.addArg(sig_mod_flag) catch fatal(io, "sig mod flag too long for command buffer", .{});
+    cmd.addArg("--mod") catch fatal(io, "failed to add --mod arg", .{});
+    cmd.addArg(sig_build_mod_flag) catch fatal(io, "sig_build mod flag too long for command buffer", .{});
+    cmd.addArg("--mod") catch fatal(io, "failed to add --mod arg", .{});
+    cmd.addArg(std_mod_flag) catch fatal(io, "std mod flag too long for command buffer", .{});
+    cmd.addArg("--cache-dir") catch fatal(io, "failed to add --cache-dir arg", .{});
+    cmd.addArg(local_cache_dir) catch fatal(io, "local cache dir too long for command buffer", .{});
+    cmd.addArg("--global-cache-dir") catch fatal(io, "failed to add --global-cache-dir arg", .{});
+    cmd.addArg(global_cache_dir) catch fatal(io, "global cache dir too long for command buffer", .{});
+    cmd.addArg("--zig-lib-dir") catch fatal(io, "failed to add --zig-lib-dir arg", .{});
+    cmd.addArg(zig_lib_dir) catch fatal(io, "zig lib dir too long for command buffer", .{});
+    cmd.addArg(emit_flag) catch fatal(io, "emit flag too long for command buffer", .{});
+
+    if (verbose) {
+        printMsg(io, "compiling build host: {s} build-exe {s} --mod build:{s}", .{ compiler_path, host_src_path, build_file_path });
+    }
+
+    // ── Execute compilation ─────────────────────────────────────────────
+    var stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined;
+    var stderr_len: usize = 0;
+    const exit_code = runCommand(&cmd, &stderr_buf, &stderr_len, io) catch {
+        fatal(io, "failed to spawn build host compilation process", .{});
+    };
+
+    if (exit_code == 0) {
+        return emit_path;
+    }
+
+    // Exit code 2: compile errors already reported by the compiler.
+    if (exit_code == 2) {
+        std.process.exit(2);
+    }
+
+    // Other non-zero: report failure with stderr.
+    if (stderr_len > 0) {
+        printMsg(io, "build host compilation failed with exit code {d}:\n{s}", .{ exit_code, stderr_buf[0..stderr_len] });
+    } else {
+        printMsg(io, "build host compilation failed with exit code {d}", .{exit_code});
+    }
+    std.process.exit(1);
+}
+
 // ── Entry point ─────────────────────────────────────────────────────────────
 
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
 
-    // ── 1. Parse argv into stack buffers ────────────────────────────────
+    // ── 1. Parse argv: fixed positional args [0..6) + user args [6..] ───
+    var runner_args: Runner_Args = .{};
     var config: Cli_Config = .{};
 
     // Access raw argv vector. On POSIX this is []const [*:0]const u8.
@@ -2356,9 +2694,65 @@ pub fn main(init: std.process.Init) !void {
     var args_it = try init.minimal.args.iterateAllocator(init.gpa);
     defer args_it.deinit();
 
-    // Skip argv[0] (the program name).
-    _ = args_it.skip();
+    // Count total args to validate we have at least 6.
+    var arg_count: usize = 0;
+    // We need to collect all args first since the iterator is forward-only.
+    // Use a bounded buffer for the fixed args, then parse user args inline.
 
+    // argv[0]: runner binary path
+    if (args_it.next()) |arg| {
+        if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[0] (runner binary) path too long", .{});
+        @memcpy(runner_args.runner_binary[0..arg.len], arg);
+        runner_args.runner_binary_len = arg.len;
+        arg_count += 1;
+    }
+
+    // argv[1]: sig compiler path
+    if (args_it.next()) |arg| {
+        if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[1] (compiler path) too long", .{});
+        @memcpy(runner_args.compiler_path[0..arg.len], arg);
+        runner_args.compiler_path_len = arg.len;
+        arg_count += 1;
+    }
+
+    // argv[2]: zig lib directory
+    if (args_it.next()) |arg| {
+        if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[2] (zig lib dir) too long", .{});
+        @memcpy(runner_args.zig_lib_dir[0..arg.len], arg);
+        runner_args.zig_lib_dir_len = arg.len;
+        arg_count += 1;
+    }
+
+    // argv[3]: build root directory
+    if (args_it.next()) |arg| {
+        if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[3] (build root) too long", .{});
+        @memcpy(runner_args.build_root[0..arg.len], arg);
+        runner_args.build_root_len = arg.len;
+        arg_count += 1;
+    }
+
+    // argv[4]: local cache directory
+    if (args_it.next()) |arg| {
+        if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[4] (local cache dir) too long", .{});
+        @memcpy(runner_args.local_cache_dir[0..arg.len], arg);
+        runner_args.local_cache_dir_len = arg.len;
+        arg_count += 1;
+    }
+
+    // argv[5]: global cache directory
+    if (args_it.next()) |arg| {
+        if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[5] (global cache dir) too long", .{});
+        @memcpy(runner_args.global_cache_dir[0..arg.len], arg);
+        runner_args.global_cache_dir_len = arg.len;
+        arg_count += 1;
+    }
+
+    // Validate that all 6 fixed positional args were present.
+    if (arg_count < 6) {
+        fatal(io, "sig build runner requires at least 6 arguments (got {d})\n  Usage: <runner> <compiler> <zig-lib-dir> <build-root> <local-cache> <global-cache> [user-args...]", .{arg_count});
+    }
+
+    // argv[6..]: user arguments (step names, -D flags, -j, --verbose, etc.)
     while (args_it.next()) |arg| {
         if (arg.len >= 2 and arg[0] == '-' and arg[1] == 'D') {
             // -Dname=value or -Dname (boolean shorthand)
@@ -2380,29 +2774,8 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         } else if (arg.len >= 2 and arg[0] == '-' and arg[1] == '-') {
-            // Long options: --build-file, --build-root, --cache-dir, etc.
-            if (std.mem.eql(u8, arg, "--build-file") or std.mem.startsWith(u8, arg, "--build-file=")) {
-                const value = parseLongOptionValue(arg) orelse blk: {
-                    break :blk args_it.next() orelse fatal(io, "--build-file requires a path argument", .{});
-                };
-                if (value.len > PATH_BUF_SIZE) fatal(io, "--build-file path too long", .{});
-                @memcpy(config.build_file[0..value.len], value);
-                config.build_file_len = value.len;
-            } else if (std.mem.eql(u8, arg, "--build-root") or std.mem.startsWith(u8, arg, "--build-root=")) {
-                const value = parseLongOptionValue(arg) orelse blk: {
-                    break :blk args_it.next() orelse fatal(io, "--build-root requires a path argument", .{});
-                };
-                if (value.len > PATH_BUF_SIZE) fatal(io, "--build-root path too long", .{});
-                @memcpy(config.build_root[0..value.len], value);
-                config.build_root_len = value.len;
-            } else if (std.mem.eql(u8, arg, "--cache-dir") or std.mem.startsWith(u8, arg, "--cache-dir=")) {
-                const value = parseLongOptionValue(arg) orelse blk: {
-                    break :blk args_it.next() orelse fatal(io, "--cache-dir requires a path argument", .{});
-                };
-                if (value.len > PATH_BUF_SIZE) fatal(io, "--cache-dir path too long", .{});
-                @memcpy(config.cache_dir[0..value.len], value);
-                config.cache_dir_len = value.len;
-            } else if (std.mem.eql(u8, arg, "--benchmark")) {
+            // Long options: --benchmark, --verbose, --verify-identical, --self-test
+            if (std.mem.eql(u8, arg, "--benchmark")) {
                 config.benchmark = true;
             } else if (std.mem.eql(u8, arg, "--verbose")) {
                 config.verbose = true;
@@ -2427,38 +2800,15 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
-    // ── 2. Resolve build root ───────────────────────────────────────────
-    var build_root_buf: [PATH_BUF_SIZE]u8 = undefined;
-    var build_root_len: usize = 0;
+    // ── 2. Extract build root from Runner_Args ──────────────────────────
+    const build_root = runner_args.build_root[0..runner_args.build_root_len];
 
-    if (config.build_root_len > 0) {
-        // User-specified build root.
-        @memcpy(build_root_buf[0..config.build_root_len], config.build_root[0..config.build_root_len]);
-        build_root_len = config.build_root_len;
-    } else {
-        // Default: current working directory.
-        build_root_len = std.process.currentPath(io, &build_root_buf) catch {
-            fatal(io, "failed to get current working directory", .{});
-        };
-    }
-    const build_root = build_root_buf[0..build_root_len];
-
-    // ── 3. Resolve build.sig path ───────────────────────────────────────
+    // ── 3. Derive build.sig path from build root ────────────────────────
     var build_file_path_buf: [PATH_BUF_SIZE]u8 = undefined;
-    var build_file_path: []const u8 = undefined;
-
-    if (config.build_file_len > 0) {
-        // User-specified build file.
-        build_file_path = pathResolve(&build_file_path_buf, build_root, config.build_file[0..config.build_file_len]) catch {
-            fatal(io, "failed to resolve build file path", .{});
-        };
-    } else {
-        // Default: build_root/build.sig
-        const segs = [_][]const u8{ build_root, DEFAULT_BUILD_FILE };
-        build_file_path = sig_fs.joinPath(&build_file_path_buf, &segs) catch {
-            fatal(io, "failed to construct build file path", .{});
-        };
-    }
+    const build_file_segs = [_][]const u8{ build_root, DEFAULT_BUILD_FILE };
+    const build_file_path = sig_fs.joinPath(&build_file_path_buf, &build_file_segs) catch {
+        fatal(io, "failed to construct build file path", .{});
+    };
 
     // Verify build.sig exists by attempting to open it.
     {
@@ -2470,224 +2820,113 @@ pub fn main(init: std.process.Init) !void {
     }
 
     if (config.verbose) {
+        printMsg(io, "compiler:   {s}", .{runner_args.compiler_path[0..runner_args.compiler_path_len]});
+        printMsg(io, "zig lib:    {s}", .{runner_args.zig_lib_dir[0..runner_args.zig_lib_dir_len]});
         printMsg(io, "build file: {s}", .{build_file_path});
         printMsg(io, "build root: {s}", .{build_root});
     }
 
-    // ── 4. Resolve cache directory ──────────────────────────────────────
-    var cache_dir_buf: [PATH_BUF_SIZE]u8 = undefined;
-    var cache_dir: []const u8 = undefined;
-
-    if (config.cache_dir_len > 0) {
-        cache_dir = pathResolve(&cache_dir_buf, build_root, config.cache_dir[0..config.cache_dir_len]) catch {
-            fatal(io, "failed to resolve cache directory path", .{});
-        };
-    } else {
-        const segs = [_][]const u8{ build_root, DEFAULT_CACHE_DIR };
-        cache_dir = sig_fs.joinPath(&cache_dir_buf, &segs) catch {
-            fatal(io, "failed to construct cache directory path", .{});
-        };
-    }
-
-    // Resolve cache file path: cache_dir/cache.bin
-    var cache_file_buf: [PATH_BUF_SIZE]u8 = undefined;
-    const cache_file_segs = [_][]const u8{ cache_dir, DEFAULT_CACHE_FILE };
-    const cache_file_path = sig_fs.joinPath(&cache_file_buf, &cache_file_segs) catch {
-        fatal(io, "failed to construct cache file path", .{});
-    };
+    // ── 4. Compile build host ──────────────────────────────────────────
+    // The build host is build_host.sig compiled with --mod build:<build.sig>.
+    // It handles everything: creates Build_Context, calls build.sig's build(),
+    // validates steps, runs the scheduler, and exits.
+    const build_host_binary = compileBuildSig(io, build_file_path, &runner_args, config.verbose);
 
     if (config.verbose) {
-        printMsg(io, "cache dir:  {s}", .{cache_dir});
+        printMsg(io, "build host compiled: {s}", .{build_host_binary});
     }
 
-    // ── 5. Determine thread count ───────────────────────────────────────
-    const thread_count: usize = if (config.thread_count > 0)
-        @min(config.thread_count, MAX_THREADS)
-    else
-        // Default: 4 threads. CPU count detection is platform-specific
-        // and not available without allocators in Zig 0.16. A reasonable
-        // default of 4 covers most development machines.
-        4;
+    // ── 5. Spawn build host with same argv and propagate exit code ──────
+    // The host receives the same argument protocol as this runner:
+    // [host_binary, compiler, zig_lib_dir, build_root, local_cache, global_cache, user_args...]
+    // We reconstruct the argv from runner_args and config.
+    var host_cmd: Command_Buffer = .{};
 
-    if (config.verbose) {
-        printMsg(io, "threads:    {d}", .{thread_count});
-    }
+    host_cmd.addArg(build_host_binary) catch fatal(io, "host binary path too long", .{});
+    host_cmd.addArg(runner_args.compiler_path[0..runner_args.compiler_path_len]) catch fatal(io, "compiler path too long", .{});
+    host_cmd.addArg(runner_args.zig_lib_dir[0..runner_args.zig_lib_dir_len]) catch fatal(io, "zig lib dir too long", .{});
+    host_cmd.addArg(build_root) catch fatal(io, "build root too long", .{});
+    host_cmd.addArg(runner_args.local_cache_dir[0..runner_args.local_cache_dir_len]) catch fatal(io, "local cache dir too long", .{});
+    host_cmd.addArg(runner_args.global_cache_dir[0..runner_args.global_cache_dir_len]) catch fatal(io, "global cache dir too long", .{});
 
-    // ── 6. Set up Build_Context ─────────────────────────────────────────
-    var ctx: Build_Context = .{};
-
-    // Copy build root into context.
-    @memcpy(ctx.build_root[0..build_root_len], build_root);
-    ctx.build_root_len = build_root_len;
-
-    // Copy cache dir into context.
-    @memcpy(ctx.cache_dir[0..cache_dir.len], cache_dir);
-    ctx.cache_dir_len = cache_dir.len;
-
-    // Set default install prefix: build_root/zig-out
-    {
-        var prefix_buf: [PATH_BUF_SIZE]u8 = undefined;
-        const prefix_segs = [_][]const u8{ build_root, "zig-out" };
-        const prefix = sig_fs.joinPath(&prefix_buf, &prefix_segs) catch {
-            fatal(io, "failed to construct install prefix path", .{});
-        };
-        @memcpy(ctx.install_prefix[0..prefix.len], prefix);
-        ctx.install_prefix_len = prefix.len;
-    }
-
-    // Copy parsed -D options into context.
-    ctx.options = config.options;
-
-    // Read standard options from -D flags.
-    if (getOption(Optimize_Mode, &ctx.options, "optimize")) |mode| {
-        ctx.optimize = mode;
-    }
-    if (getOption([]const u8, &ctx.options, "target")) |triple_str| {
-        ctx.target = Target_Triple.parse(triple_str) catch {
-            fatal(io, "invalid target triple: '{s}'", .{triple_str});
-        };
-    }
-
-    // ── 7. TODO: Compile build.sig as module and call build(ctx) ────────
-    // Phase 2 will compile build.sig as a Zig module exporting
-    // `pub fn build(*Build_Context) !void`, dynamically load it, and call
-    // the build function. For now, the Build_Context is set up and ready
-    // for manual step registration or Phase 2 integration.
-    //
-    // Future implementation:
-    //   const build_mod = try compileBuildModule(build_file_path, io);
-    //   try build_mod.build(&ctx);
-
-    if (config.verbose) {
-        printMsg(io, "build context initialized (Phase 2 will load build.sig)", .{});
-    }
-
-    // ── 8. Validate requested step names ────────────────────────────────
+    // Forward user args: step names, -D flags, -j, --verbose, etc.
     const requested = config.requested_steps.slice();
     for (requested) |step_name| {
-        if (ctx.steps.findByName(step_name) == null) {
-            // Build a list of available step names for the error message.
-            var avail_buf: [4096]u8 = undefined;
-            var avail_offset: usize = 0;
-            for (ctx.steps.entries[0..ctx.steps.count], 0..) |entry, i| {
-                if (i > 0) {
-                    if (avail_offset + 2 <= avail_buf.len) {
-                        avail_buf[avail_offset] = ',';
-                        avail_buf[avail_offset + 1] = ' ';
-                        avail_offset += 2;
-                    }
-                }
-                const name = entry.name[0..entry.name_len];
-                if (avail_offset + name.len <= avail_buf.len) {
-                    @memcpy(avail_buf[avail_offset..][0..name.len], name);
-                    avail_offset += name.len;
-                }
-            }
-            if (ctx.steps.count == 0) {
-                fatal(io, "unknown step '{s}' (no steps registered — build.sig loading not yet implemented)", .{step_name});
-            } else {
-                fatal(io, "unknown step '{s}'. Available steps: {s}", .{ step_name, avail_buf[0..avail_offset] });
-            }
+        host_cmd.addArg(step_name) catch fatal(io, "step name too long for command buffer", .{});
+    }
+
+    // Forward -D options
+    for (config.options.entries[0..]) |entry| {
+        if (!entry.occupied) continue;
+        const key = entry.key_buf[0..entry.key_len];
+        const val = entry.val_buf[0..entry.val_len];
+        var opt_buf: [PATH_BUF_SIZE]u8 = undefined;
+        const d_prefix = "-D";
+        const eq = "=";
+        const total_len = d_prefix.len + key.len + eq.len + val.len;
+        if (total_len <= PATH_BUF_SIZE) {
+            @memcpy(opt_buf[0..d_prefix.len], d_prefix);
+            @memcpy(opt_buf[d_prefix.len..][0..key.len], key);
+            @memcpy(opt_buf[d_prefix.len + key.len ..][0..eq.len], eq);
+            @memcpy(opt_buf[d_prefix.len + key.len + eq.len ..][0..val.len], val);
+            host_cmd.addArg(opt_buf[0..total_len]) catch {};
         }
     }
 
-    // ── 9. Build dependency graph from Step_Registry ────────────────────
-    var graph: Dependency_Graph = .{};
-    graph.node_count = ctx.steps.count;
-
-    // Populate edges from each step's dependency list.
-    for (ctx.steps.entries[0..ctx.steps.count], 0..) |entry, i| {
-        for (entry.deps[0..entry.dep_count]) |dep| {
-            graph.addEdge(@intCast(i), dep) catch {
-                fatal(io, "dependency graph capacity exceeded", .{});
-            };
-        }
+    // Forward -j if specified
+    if (config.thread_count > 0) {
+        var j_buf: [32]u8 = undefined;
+        const j_str = std.fmt.bufPrint(&j_buf, "-j{d}", .{config.thread_count}) catch "-j4";
+        host_cmd.addArg(j_str) catch {};
     }
 
-    // ── 10. Topological sort ────────────────────────────────────────────
-    var topo_buf: [MAX_STEPS]Step_Handle = undefined;
-    _ = graph.topologicalSort(&topo_buf) catch {
-        fatal(io, "dependency cycle detected in build graph", .{});
-    };
-
-    // ── 11. Load cache ─────────────────────────────────────────────────
-    var cache: Cache_Map = .{};
-    cache.load(io, cache_file_path);
-
+    // Forward flags
     if (config.verbose) {
-        printMsg(io, "cache loaded: {d} entries from {s}", .{ cache.count, cache_file_path });
+        host_cmd.addArg("--verbose") catch {};
     }
-
-    // ── 12. Initialize thread pool ──────────────────────────────────────
-    var pool: Thread_Pool = .{};
-    pool.init(thread_count, io);
-    defer pool.deinit();
-
-    // ── 13. Run scheduler ───────────────────────────────────────────────
-    if (config.verbose) {
-        printMsg(io, "scheduling {d} steps with {d} threads...", .{ ctx.steps.count, thread_count });
-    }
-
-    const sig_start_ns = std.Io.Clock.awake.now(io).nanoseconds;
-    const summary = runScheduler(&ctx.steps, &graph, &cache, &pool, io);
-    const sig_end_ns = std.Io.Clock.awake.now(io).nanoseconds;
-    const sig_elapsed_ns: u64 = @intCast(sig_end_ns - sig_start_ns);
-
-    // ── 14. Save cache ─────────────────────────────────────────────────
-    cache.save(io, cache_file_path) catch {
-        // Cache save failure is non-fatal — warn and continue.
-        const stderr = std.Io.File.stderr();
-        stderr.writeStreamingAll(io, "warning: failed to save cache\n") catch {};
-    };
-
-    // ── 15. Print summary and exit ──────────────────────────────────────
-    printSummary(io, &summary);
-
     if (config.benchmark) {
-        runBenchmark(io, build_root, &config, sig_elapsed_ns, &summary);
+        host_cmd.addArg("--benchmark") catch {};
     }
-
     if (config.verify_identical) {
-        if (!verifyIdentical(io, build_root, &config)) {
-            std.process.exit(1);
-        }
+        host_cmd.addArg("--verify-identical") catch {};
     }
-
     if (config.self_test) {
-        // Determine the path to the currently running binary.
-        // Use argv[0] resolved against the build root, or fall back to
-        // a well-known path for the bootstrapped binary.
-        var self_path_buf: [PATH_BUF_SIZE]u8 = undefined;
-        var self_path: []const u8 = undefined;
-
-        // Try to get argv[0] from the OS.
-        var args_it2 = init.minimal.args.iterateAllocator(init.gpa) catch {
-            fatal(io, "failed to iterate args for self-test", .{});
-        };
-        defer args_it2.deinit();
-        if (args_it2.next()) |argv0| {
-            if (argv0.len <= PATH_BUF_SIZE) {
-                @memcpy(self_path_buf[0..argv0.len], argv0);
-                self_path = self_path_buf[0..argv0.len];
-            } else {
-                fatal(io, "argv[0] path too long for self-test", .{});
+        if (config.self_test_compiler_len > 0) {
+            var st_buf: [PATH_BUF_SIZE]u8 = undefined;
+            const st_prefix = "--self-test=";
+            const st_val = config.self_test_compiler[0..config.self_test_compiler_len];
+            if (st_prefix.len + st_val.len <= PATH_BUF_SIZE) {
+                @memcpy(st_buf[0..st_prefix.len], st_prefix);
+                @memcpy(st_buf[st_prefix.len..][0..st_val.len], st_val);
+                host_cmd.addArg(st_buf[0 .. st_prefix.len + st_val.len]) catch {};
             }
         } else {
-            fatal(io, "cannot determine binary path for self-test", .{});
-        }
-
-        const compiler = if (config.self_test_compiler_len > 0)
-            config.self_test_compiler[0..config.self_test_compiler_len]
-        else
-            self_path;
-
-        if (!verifySelfHosting(io, self_path, compiler)) {
-            std.process.exit(1);
+            host_cmd.addArg("--self-test") catch {};
         }
     }
 
-    // Exit with appropriate code: 0 if all succeeded, 1 if any failed.
-    if (summary.failed > 0) {
-        std.process.exit(1);
+    if (config.verbose) {
+        printMsg(io, "spawning build host: {s}", .{build_host_binary});
     }
+
+    var stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined;
+    var stderr_len: usize = 0;
+    const host_exit = runCommand(&host_cmd, &stderr_buf, &stderr_len, io) catch {
+        fatal(io, "failed to spawn build host process", .{});
+    };
+
+    // Propagate stderr output from the host.
+    if (stderr_len > 0) {
+        const stderr_file = std.Io.File.stderr();
+        stderr_file.writeStreamingAll(io, stderr_buf[0..stderr_len]) catch {};
+    }
+
+    if (host_exit == 0) return;
+
+    // Exit code 2: compile errors already reported by the compiler.
+    if (host_exit == 2) {
+        std.process.exit(2);
+    }
+
+    std.process.exit(host_exit);
 }

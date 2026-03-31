@@ -315,6 +315,10 @@ jobs:
         run: sig build test-sig
         timeout-minutes: 60
 
+      - name: Verify build runner self-hosting
+        run: sig build build-runner
+        timeout-minutes: 30
+
       - name: Verify identical output
         run: sig build --verify-identical
         timeout-minutes: 60
