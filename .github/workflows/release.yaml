@@ -76,26 +76,10 @@ jobs:
           chmod +x /tmp/bootstrap-sig/bin/sig
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
 
-      # Two-stage bootstrap: 0.0.4-dev doesn't have sigBuildDelegate yet.
-      # Stage 1: build the compiler using the old build system (build.zig) via --build-file.
-      # Stage 2: use the patched compiler (which has sigBuildDelegate) for sig build.
-      - name: "Stage 1: compile patched compiler via old build system"
-        run: |
-          sig build \
-            --build-file build.zig \
-            -Doptimize=ReleaseSafe \
-            -Dno-lib \
-            -Dno-langref \
-            --prefix /tmp/stage1
-          chmod +x /tmp/stage1/bin/sig
-          # Prepend stage1 to PATH so it takes priority
-          echo "/tmp/stage1/bin" >> "$GITHUB_PATH"
-        timeout-minutes: 120
-
       - name: Build sig for ${{ matrix.target }}
         run: |
           sig build \
-            --zig-lib-dir lib \
+            --build-file build.zig \
             -Dtarget=${{ matrix.zig_target }} \
             -Doptimize=ReleaseSafe \
             -Dno-lib \
@@ -105,7 +89,7 @@ jobs:
         timeout-minutes: 120
 
       - name: Install lib files
-        run: sig build --zig-lib-dir lib -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0
+        run: sig build --build-file build.zig -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0
         timeout-minutes: 10
 
       - name: Run benchmarks
