@@ -94,6 +94,7 @@ jobs:
       - name: Build sig for ${{ matrix.target }}
         run: |
           sig build \
+            --zig-lib-dir lib \
             -Dtarget=${{ matrix.zig_target }} \
             -Doptimize=ReleaseSafe \
             -Dno-lib \
@@ -103,7 +104,7 @@ jobs:
         timeout-minutes: 120
 
       - name: Install lib files
-        run: sig build -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0
+        run: sig build --zig-lib-dir lib -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0
         timeout-minutes: 10
 
       - name: Run benchmarks

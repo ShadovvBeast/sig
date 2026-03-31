@@ -1858,7 +1858,7 @@ fn buildOutputType(
                     },
                     .zig, .sig => {
                         if (root_src_file) |other| {
-                            fatal("found another zig file '{s}' after root source file '{s}'", .{ arg, other });
+                            fatal("found another source file '{s}' after root source file '{s}'", .{ arg, other });
                         } else root_src_file = arg;
                     },
                     .unknown => {
@@ -1991,7 +1991,7 @@ fn buildOutputType(
                         },
                         .zig, .sig => {
                             if (root_src_file) |other| {
-                                fatal("found another zig file '{s}' after root source file '{s}'", .{ it.only_arg, other });
+                                fatal("found another source file '{s}' after root source file '{s}'", .{ it.only_arg, other });
                             } else root_src_file = it.only_arg;
                         },
                     },
