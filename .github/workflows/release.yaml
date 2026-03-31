@@ -1,4 +1,4 @@
-# [sig] Release pipeline — cmake bootstrap then cross-compile all 4 platforms
+# [sig] Release pipeline — download bootstrap sig, cross-compile all 4 platforms
 name: release
 
 on:
@@ -19,82 +19,11 @@ on:
 permissions:
   contents: write
 
-jobs:
-  bootstrap:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Resolve version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SIG_VER="${{ inputs.version }}"
-          else
-            SIG_MAJOR=$(grep -oP 'sig_version.*major = \K\d+' build.sig)
-            SIG_MINOR=$(grep -oP 'sig_version.*minor = \K\d+' build.sig)
-            SIG_PATCH=$(grep -oP 'sig_version.*patch = \K\d+' build.sig)
-            SIG_PRE=$(grep -oP 'sig_version.*pre = "\K[^"]+' build.sig || true)
-            [ -n "$SIG_PRE" ] && SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}-${SIG_PRE}" || SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}"
-          fi
-          ZIG_MAJOR=$(grep -oP 'zig_version.*major = \K\d+' build.sig)
-          ZIG_MINOR=$(grep -oP 'zig_version.*minor = \K\d+' build.sig)
-          ZIG_PATCH=$(grep -oP 'zig_version.*patch = \K\d+' build.sig)
-          VERSION="${SIG_VER}+zig${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}.$(git rev-parse --short=7 HEAD)"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq cmake ninja-build python3 zlib1g-dev libzstd-dev
-      - name: Build LLVM 21 from source
-        run: |
-          git clone --depth 1 --branch llvmorg-21.1.2 https://github.com/llvm/llvm-project.git llvm-src
-          cmake -S llvm-src/llvm -B llvm-build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="$HOME/llvm-21" \
-            -DLLVM_ENABLE_PROJECTS="clang;lld" \
-            -DLLVM_TARGETS_TO_BUILD="AArch64;AMDGPU;ARM;AVR;BPF;Hexagon;Lanai;LoongArch;Mips;MSP430;NVPTX;PowerPC;RISCV;Sparc;SystemZ;VE;WebAssembly;X86;XCore" \
-            -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="M68k;Xtensa;ARC;CSKY;SPIRV" \
-            -DLLVM_ENABLE_TERMINFO=OFF \
-            -DLLVM_ENABLE_LIBXML2=OFF \
-            -DLLVM_ENABLE_ZLIB=FORCE_ON \
-            -DLLVM_ENABLE_ZSTD=FORCE_ON \
-            -DLLVM_USE_STATIC_ZSTD=ON \
-            -DLLVM_STATIC_LINK_CXX_STDLIB=ON \
-            -DCLANG_ENABLE_ARCMT=OFF \
-            -DCLANG_ENABLE_STATIC_ANALYZER=ON \
-            -DLLVM_ENABLE_BINDINGS=OFF \
-            -DLLVM_ENABLE_OCAMLDOC=OFF \
-            -DLLVM_INCLUDE_TESTS=OFF \
-            -DLLVM_INCLUDE_EXAMPLES=OFF \
-            -DLLVM_INCLUDE_BENCHMARKS=OFF \
-            -DLLVM_INCLUDE_DOCS=OFF
-          ninja -C llvm-build install -j$(nproc)
-        timeout-minutes: 120
-      - name: Build sig with cmake
-        run: |
-          export PATH="$HOME/llvm-21/bin:$PATH"
-          mkdir build && cd build
-          cmake .. -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$HOME/llvm-21" \
-            -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap-sig" \
-            -DZIG_USE_LLVM_CONFIG=ON
-          ninja install -j$(nproc)
-          cd ..
-          bootstrap-sig/bin/sig version
-        timeout-minutes: 60
-      - name: Upload bootstrap compiler
-        uses: actions/upload-artifact@v4
-        with:
-          name: bootstrap-sig
-          path: bootstrap-sig/
+env:
+  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v1/bootstrap-sig-x86_64-linux.tar.gz
 
+jobs:
   build:
-    needs: bootstrap
     strategy:
       fail-fast: false
       matrix:
@@ -112,21 +41,39 @@ jobs:
             zig_target: x86_64-windows
             ext: zip
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ needs.bootstrap.outputs.version }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Download bootstrap compiler
-        uses: actions/download-artifact@v4
-        with:
-          name: bootstrap-sig
-          path: bootstrap-sig
-      - name: Install bootstrap sig
+
+      - name: Resolve version
+        id: version
         run: |
-          chmod +x bootstrap-sig/bin/sig
-          echo "$PWD/bootstrap-sig/bin" >> "$GITHUB_PATH"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SIG_VER="${{ inputs.version }}"
+          else
+            SIG_MAJOR=$(grep -oP 'sig_version.*major = \K\d+' build.sig)
+            SIG_MINOR=$(grep -oP 'sig_version.*minor = \K\d+' build.sig)
+            SIG_PATCH=$(grep -oP 'sig_version.*patch = \K\d+' build.sig)
+            SIG_PRE=$(grep -oP 'sig_version.*pre = "\K[^"]+' build.sig || true)
+            [ -n "$SIG_PRE" ] && SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}-${SIG_PRE}" || SIG_VER="${SIG_MAJOR}.${SIG_MINOR}.${SIG_PATCH}"
+          fi
+          ZIG_MAJOR=$(grep -oP 'zig_version.*major = \K\d+' build.sig)
+          ZIG_MINOR=$(grep -oP 'zig_version.*minor = \K\d+' build.sig)
+          ZIG_PATCH=$(grep -oP 'zig_version.*patch = \K\d+' build.sig)
+          VERSION="${SIG_VER}+zig${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}.$(git rev-parse --short=7 HEAD)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Download bootstrap sig compiler
+        run: |
+          curl -fsSL "$BOOTSTRAP_URL" | tar -xz -C /tmp/bootstrap-sig
+          chmod +x /tmp/bootstrap-sig/bin/sig
+          echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
+          /tmp/bootstrap-sig/bin/sig version
+
       - name: Build sig for ${{ matrix.target }}
         run: |
           sig build \
@@ -137,9 +84,11 @@ jobs:
             --prefix "sig-${VERSION}-${{ matrix.target }}" \
             --maxrss 0
         timeout-minutes: 120
+
       - name: Install lib files
         run: sig build -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0
         timeout-minutes: 10
+
       - name: Run benchmarks
         if: matrix.target == 'x86_64-linux'
         run: |
@@ -148,6 +97,7 @@ jobs:
           [ -x "$SIG_BIN" ] && "$SIG_BIN" build --benchmark 2>&1 | tee benchmark-results/release-benchmark.txt || true
         timeout-minutes: 30
         continue-on-error: true
+
       - name: Upload benchmark results
         if: matrix.target == 'x86_64-linux'
         uses: actions/upload-artifact@v4
@@ -155,20 +105,24 @@ jobs:
           name: benchmark-results
           path: benchmark-results/
           if-no-files-found: ignore
+
       - name: Package tarball
         if: matrix.ext == 'tar.xz'
         run: |
           ARCHIVE="sig-${VERSION}-${{ matrix.target }}.tar.xz"
           tar -cJf "${ARCHIVE}" "sig-${VERSION}-${{ matrix.target }}"
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
       - name: Package zip
         if: matrix.ext == 'zip'
         run: |
           ARCHIVE="sig-${VERSION}-${{ matrix.target }}.zip"
           cd "sig-${VERSION}-${{ matrix.target }}" && zip -r "../${ARCHIVE}" . && cd ..
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
       - name: Generate checksum
         run: sha256sum "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -178,10 +132,10 @@ jobs:
             ${{ env.ARCHIVE }}.sha256
 
   release:
-    needs: [bootstrap, build]
+    needs: build
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.bootstrap.outputs.version }}
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - name: Download all artifacts
