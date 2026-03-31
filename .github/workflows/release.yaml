@@ -77,15 +77,15 @@ jobs:
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
 
       # Two-stage bootstrap: 0.0.4-dev doesn't have sigBuildDelegate yet.
-      # Stage 1: compile the patched compiler directly via build-exe (bypasses build system).
+      # Stage 1: build the compiler using the old build system (build.zig) via --build-file.
       # Stage 2: use the patched compiler (which has sigBuildDelegate) for sig build.
-      - name: "Stage 1: compile patched compiler via build-exe"
+      - name: "Stage 1: compile patched compiler via old build system"
         run: |
-          mkdir -p /tmp/stage1/bin
-          sig build-exe src/main.zig \
-            -femit-bin=/tmp/stage1/bin/sig \
-            --zig-lib-dir lib \
-            -OReleaseSafe
+          sig build \
+            --build-file build.zig \
+            -Dno-lib \
+            -Dno-langref \
+            --prefix /tmp/stage1
           chmod +x /tmp/stage1/bin/sig
           # Prepend stage1 to PATH so it takes priority
           echo "/tmp/stage1/bin" >> "$GITHUB_PATH"
