@@ -1,4 +1,4 @@
-# [sig] Release pipeline — download pre-built LLVM + bootstrap, cross-compile all 4 platforms
+# [sig] Release pipeline — zero-allocator sig build system
 name: release
 
 on:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 0.0.1)'
+        description: 'Release version (e.g. 0.0.4)'
         required: true
         type: string
       prerelease:
@@ -20,7 +20,8 @@ permissions:
   contents: write
 
 env:
-  LLVM_URL: https://github.com/SB0LTD/sig/releases/download/llvm-21/llvm-21-x86_64-linux.tar.xz
+  # 0.0.4-dev has sigBuildDelegate + LLVM — first binary built with the new build system pipeline
+  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-0.0.4-dev%2Bzig0.16.0.7fd4831/sig-0.0.4-dev%2Bzig0.16.0.7fd4831-x86_64-linux.tar.xz
 
 jobs:
   build:
@@ -67,41 +68,18 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
-      - name: Install build dependencies
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build zlib1g-dev libzstd-dev
-
-      - name: Download pre-built LLVM 21
+      - name: Download bootstrap sig compiler
         run: |
-          curl -fsSL "$LLVM_URL" -o /tmp/llvm.tar.xz
-          tar -xJf /tmp/llvm.tar.xz -C /tmp
-          echo "LLVM installed to /tmp/llvm-21"
+          mkdir -p /tmp/bootstrap-sig
+          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap.tar.xz
+          tar -xJf /tmp/bootstrap.tar.xz -C /tmp/bootstrap-sig --strip-components=1
+          chmod +x /tmp/bootstrap-sig/bin/sig
+          echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
+          sig version
 
-      - name: Build bootstrap sig compiler via cmake
-        run: |
-          export PATH="/tmp/llvm-21/bin:$PATH"
-          # Hide build.sig during cmake so zig2 uses build.zig for stage3
-          mv build.sig build.sig.bak
-          mkdir build && cd build
-          cmake .. -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="/tmp/llvm-21" \
-            -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap-sig" \
-            -DZIG_USE_LLVM_CONFIG=ON
-          ninja install -j$(nproc)
-          cd ..
-          # Restore build.sig
-          mv build.sig.bak build.sig
-          chmod +x bootstrap-sig/bin/sig
-          echo "$PWD/bootstrap-sig/bin" >> "$GITHUB_PATH"
-          bootstrap-sig/bin/sig version
-        timeout-minutes: 60
-
-      # Use --build-file build.zig because cmake bootstrap doesn't have sigBuildDelegate.
-      # The output binary WILL have sigBuildDelegate from the current source.
       - name: Build sig for ${{ matrix.target }}
         run: |
           sig build \
-            --build-file build.zig \
             -Dtarget=${{ matrix.zig_target }} \
             -Doptimize=ReleaseSafe \
             -Dno-lib \
@@ -111,7 +89,7 @@ jobs:
         timeout-minutes: 120
 
       - name: Install lib files
-        run: sig build --build-file build.zig -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0
+        run: sig build -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0
         timeout-minutes: 10
 
       - name: Package tarball
@@ -160,7 +138,7 @@ jobs:
           cat *.sha256 > sha256sums.txt
           PRERELEASE="${{ (github.event_name == 'workflow_dispatch' && inputs.prerelease == 'true') && '--prerelease' || '--prerelease' }}"
           gh release create "sig-${VERSION}" --title "Sig ${VERSION}" \
-            --notes "Sig ${VERSION}
+            --notes "Sig ${VERSION} — built with the zero-allocator sig build system
 
           | Platform | Archive |
           |---|---|
@@ -169,5 +147,6 @@ jobs:
           | macOS aarch64 | \`sig-${VERSION}-aarch64-macos.tar.xz\` |
           | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
 
-          Built with LLVM 21. Checksums in sha256sums.txt." \
+          First release built entirely by the sig build runner. No cmake, no std.Build.
+          Checksums in sha256sums.txt." \
             ${PRERELEASE} sig-*.tar.xz sig-*.zip sha256sums.txt
