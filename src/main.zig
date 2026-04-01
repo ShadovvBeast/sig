@@ -4988,7 +4988,10 @@ fn sigBuildDelegate(
     opts: SigBuildDelegateOptions,
 ) void {
     // 1. Locate tools/sig_build/main.sig relative to zig lib dir (stack buffer)
-    var runner_src_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    // Use 4096-byte buffers instead of max_path_bytes to avoid stack overflow
+    // on Windows where max_path_bytes is 32767.
+    const path_buf_size = 4096;
+    var runner_src_buf: [path_buf_size]u8 = undefined;
     const runner_src = sigJoinPath(&runner_src_buf, &.{
         opts.zig_lib_dir, "..", "tools", "sig_build", "main.sig",
     });
@@ -4999,14 +5002,14 @@ fn sigBuildDelegate(
     };
 
     // 2. Construct module paths for --mod flags (stack buffers)
-    var sig_mod_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    var sig_mod_buf: [path_buf_size]u8 = undefined;
     const sig_mod_path = sigJoinPath(&sig_mod_buf, &.{ opts.zig_lib_dir, "sig", "sig.zig" });
 
-    var std_mod_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    var std_mod_buf: [path_buf_size]u8 = undefined;
     const std_mod_path = sigJoinPath(&std_mod_buf, &.{ opts.zig_lib_dir, "std", "std.zig" });
 
     // 3. Build output path for the compiled runner binary
-    var runner_bin_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    var runner_bin_buf: [path_buf_size]u8 = undefined;
     const runner_bin_name = switch (builtin.os.tag) {
         .windows => "sig_build_runner.exe",
         else => "sig_build_runner",
@@ -5016,16 +5019,16 @@ fn sigBuildDelegate(
     });
 
     // 4. Construct -femit-bin=<path> flag and --mod flag values (stack buffers)
-    var emit_flag_buf: [std.Io.Dir.max_path_bytes + 16]u8 = undefined;
+    var emit_flag_buf: [path_buf_size + 16]u8 = undefined;
     const emit_flag = sigConcat(&emit_flag_buf, &.{ "-femit-bin=", runner_bin });
 
-    var sig_mod_flag_buf: [std.Io.Dir.max_path_bytes + 8]u8 = undefined;
+    var sig_mod_flag_buf: [path_buf_size + 8]u8 = undefined;
     const sig_mod_flag = sigConcat(&sig_mod_flag_buf, &.{ "-Msig=", sig_mod_path });
 
-    var std_mod_flag_buf: [std.Io.Dir.max_path_bytes + 8]u8 = undefined;
+    var std_mod_flag_buf: [path_buf_size + 8]u8 = undefined;
     const std_mod_flag = sigConcat(&std_mod_flag_buf, &.{ "-Mstd=", std_mod_path });
 
-    var root_mod_flag_buf: [std.Io.Dir.max_path_bytes + 8]u8 = undefined;
+    var root_mod_flag_buf: [path_buf_size + 8]u8 = undefined;
     const root_mod_flag = sigConcat(&root_mod_flag_buf, &.{ "-Mroot=", runner_src });
 
     // 5. Compile the build runner via child process: sig build-exe
@@ -5437,14 +5440,14 @@ fn cmdBuild(gpa: Allocator, arena: Allocator, io: Io, args: []const []const u8, 
 
         // [sig] Resolve zig lib dir from override or self_exe_path (stack buffer, zero allocators).
         // The zig lib dir is typically <exe_dir>/../lib or provided via ZIG_LIB_DIR.
-        var zig_lib_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+        var zig_lib_buf: [4096]u8 = undefined;
         const zig_lib_dir = override_lib_dir orelse blk: {
             const exe_dir = fs.path.dirname(self_exe_path) orelse ".";
             break :blk sigJoinPath(&zig_lib_buf, &.{ exe_dir, "..", "lib" });
         };
 
         // [sig] Resolve local cache dir (stack buffer, zero allocators).
-        var local_cache_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+        var local_cache_buf: [4096]u8 = undefined;
         const local_cache_dir = override_local_cache_dir orelse blk: {
             const br_path = build_root.directory.path orelse ".";
             break :blk sigJoinPath(&local_cache_buf, &.{ br_path, introspect.default_local_zig_cache_basename });
