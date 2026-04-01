@@ -30,17 +30,17 @@ pub const MAX_DEPS_PER_STEP = 32;
 pub const MAX_MODULES = 128;
 pub const MAX_IMPORTS_PER_MODULE = 64;
 pub const MAX_OPTIONS = 128;
-pub const MAX_CACHE_ENTRIES = 4096;
+pub const MAX_CACHE_ENTRIES = 1024;
 pub const MAX_THREADS = 64;
-pub const MAX_WORK_QUEUE = 256;
-pub const MAX_CMD_ARGS = 128;
+pub const MAX_WORK_QUEUE = 64;
+pub const MAX_CMD_ARGS = 64;
 pub const MAX_ENV_VARS = 64;
 pub const PATH_BUF_SIZE = 4096;
 pub const NAME_BUF_SIZE = 64;
 pub const DESC_BUF_SIZE = 256;
 pub const VALUE_BUF_SIZE = 256;
-pub const OUTPUT_BUF_SIZE = 65536;
-pub const STDERR_CAPTURE_SIZE = 8192;
+pub const OUTPUT_BUF_SIZE = 4096;
+pub const STDERR_CAPTURE_SIZE = 4096;
 pub const HASH_CHUNK_SIZE = 8192;
 
 // ── Type aliases ────────────────────────────────────────────────────────────
