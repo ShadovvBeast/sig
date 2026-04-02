@@ -1,4 +1,8 @@
-# [sig] Release pipeline — cmake bootstrap (one last time), then sig build system forever
+# [sig] Adaptive release pipeline — bootstrap (fast) or cmake (slow)
+#
+# Set ONE of these env vars, comment out the other:
+#   BOOTSTRAP_URL → downloads a pre-built sig binary (fast path)
+#   LLVM_URL      → cmake bootstrap from LLVM (slow path)
 name: release
 
 on:
@@ -21,6 +25,7 @@ permissions:
 
 env:
   LLVM_URL: https://github.com/SB0LTD/sig/releases/download/llvm-21/llvm-21-x86_64-linux.tar.xz
+  # BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-latest/sig-x86_64-linux.tar.xz
 
 jobs:
   build:
@@ -48,9 +53,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve version
+      - name: Resolve version and detect mode
         id: version
         run: |
+          # --- Detect pipeline mode ---
+          if [ -n "$BOOTSTRAP_URL" ]; then
+            echo "MODE=bootstrap" >> "$GITHUB_ENV"
+            echo "mode=bootstrap" >> "$GITHUB_OUTPUT"
+          else
+            echo "MODE=cmake" >> "$GITHUB_ENV"
+            echo "mode=cmake" >> "$GITHUB_OUTPUT"
+          fi
+
+          # --- Resolve sig version ---
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             SIG_VER="${{ inputs.version }}"
           else
@@ -67,15 +82,33 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
+      # ============================================================
+      # Fast path: download pre-built sig binary
+      # ============================================================
+      - name: Download pre-built sig
+        if: env.MODE == 'bootstrap'
+        run: |
+          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/sig.tar.xz
+          tar -xJf /tmp/sig.tar.xz -C /tmp
+          chmod +x /tmp/sig-*/bin/sig
+          echo "/tmp/sig-*/bin" >> "$GITHUB_PATH"
+          /tmp/sig-*/bin/sig version
+
+      # ============================================================
+      # Slow path: cmake bootstrap from LLVM
+      # ============================================================
       - name: Install build dependencies
+        if: env.MODE == 'cmake'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build zlib1g-dev libzstd-dev
 
       - name: Download pre-built LLVM 21
+        if: env.MODE == 'cmake'
         run: |
           curl -fsSL "$LLVM_URL" -o /tmp/llvm.tar.xz
           tar -xJf /tmp/llvm.tar.xz -C /tmp
 
       - name: Build bootstrap via cmake
+        if: env.MODE == 'cmake'
         run: |
           export PATH="/tmp/llvm-21/bin:$PATH"
           mv build.sig build.sig.bak
@@ -93,8 +126,9 @@ jobs:
           bootstrap-sig/bin/sig version
         timeout-minutes: 60
 
-      # The cmake bootstrap has all fixes (noinline, small buffers, initialized argv).
-      # sig build → sigBuildDelegate → zero-allocator build system.
+      # ============================================================
+      # Both paths converge here
+      # ============================================================
       - name: Build sig for ${{ matrix.target }}
         run: |
           sig build \
