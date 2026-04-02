@@ -18,6 +18,7 @@ const sig_fs = sig.fs;
 const sig_string = sig.string;
 const sig_io = sig.io;
 const sig_errors = sig.errors;
+const sig_process = sig.process;
 
 // ── Error re-export ─────────────────────────────────────────────────────────
 pub const SigError = sig.SigError;
@@ -42,6 +43,9 @@ pub const VALUE_BUF_SIZE = 256;
 pub const OUTPUT_BUF_SIZE = 4096;
 pub const STDERR_CAPTURE_SIZE = 4096;
 pub const HASH_CHUNK_SIZE = 8192;
+pub const BUILD_OPTIONS_BUF_SIZE = 8192;
+pub const VERSION_BUF_SIZE = 128;
+pub const GIT_OUTPUT_BUF_SIZE = 256;
 
 // ── Type aliases ────────────────────────────────────────────────────────────
 /// Index into the Step_Registry entries array.
@@ -1022,130 +1026,27 @@ pub const Cache_Map = struct {
 };
 
 // ── Command execution ────────────────────────────────────────────────────────
-
-/// A key-value pair for child process environment variables.
-/// Key: up to NAME_BUF_SIZE bytes. Value: up to PATH_BUF_SIZE bytes.
-pub const Env_Pair = struct {
-    key: [NAME_BUF_SIZE]u8 = undefined,
-    key_len: usize = 0,
-    value: [PATH_BUF_SIZE]u8 = undefined,
-    value_len: usize = 0,
-};
+// Delegates to sig.process for child process spawning and command construction.
 
 /// Fixed-capacity buffer for constructing child process commands.
-/// Stores arguments, environment variables, and working directory entirely
-/// in stack memory. This struct is intentionally large (~512KB) and lives
-/// on the stack — no heap allocation.
-pub const Command_Buffer = struct {
-    args: [MAX_CMD_ARGS][PATH_BUF_SIZE]u8 = undefined,
-    arg_lens: [MAX_CMD_ARGS]usize = [_]usize{0} ** MAX_CMD_ARGS,
-    arg_count: usize = 0,
-    env: [MAX_ENV_VARS]Env_Pair = undefined,
-    env_count: usize = 0,
-    cwd: [PATH_BUF_SIZE]u8 = undefined,
-    cwd_len: usize = 0,
-
-    /// Append an argument to the command. Copies the bytes into the next
-    /// available arg slot. Returns CapacityExceeded if all 128 slots are used,
-    /// or BufferTooSmall if the argument exceeds PATH_BUF_SIZE.
-    pub fn addArg(self: *Command_Buffer, arg: []const u8) SigError!void {
-        if (self.arg_count >= MAX_CMD_ARGS) return error.CapacityExceeded;
-        if (arg.len > PATH_BUF_SIZE) return error.BufferTooSmall;
-        @memcpy(self.args[self.arg_count][0..arg.len], arg);
-        self.arg_lens[self.arg_count] = arg.len;
-        self.arg_count += 1;
-    }
-
-    /// Add an environment variable key-value pair for the child process.
-    /// Returns CapacityExceeded if all 64 env slots are used, or
-    /// BufferTooSmall if key/value exceed their buffer sizes.
-    pub fn addEnv(self: *Command_Buffer, key: []const u8, value: []const u8) SigError!void {
-        if (self.env_count >= MAX_ENV_VARS) return error.CapacityExceeded;
-        if (key.len > NAME_BUF_SIZE) return error.BufferTooSmall;
-        if (value.len > PATH_BUF_SIZE) return error.BufferTooSmall;
-        var pair = &self.env[self.env_count];
-        @memcpy(pair.key[0..key.len], key);
-        pair.key_len = key.len;
-        @memcpy(pair.value[0..value.len], value);
-        pair.value_len = value.len;
-        self.env_count += 1;
-    }
-
-    /// Set the working directory for the child process.
-    /// Returns BufferTooSmall if the path exceeds PATH_BUF_SIZE.
-    pub fn setCwd(self: *Command_Buffer, dir: []const u8) SigError!void {
-        if (dir.len > PATH_BUF_SIZE) return error.BufferTooSmall;
-        @memcpy(self.cwd[0..dir.len], dir);
-        self.cwd_len = dir.len;
-    }
-
-    /// Get a slice view of argument `i` (read-only).
-    pub fn getArg(self: *const Command_Buffer, i: usize) []const u8 {
-        return self.args[i][0..self.arg_lens[i]];
-    }
-};
+/// Re-exported from sig.process — stores arguments and working directory
+/// entirely in stack memory, no heap allocation.
+pub const Command_Buffer = sig_process.Command_Buffer;
 
 /// Spawn a child process described by `cmd`, wait for it to finish, and
 /// return its exit code. Captures up to STDERR_CAPTURE_SIZE bytes of the
 /// child's stderr into `stderr_buf`. Returns the number of stderr bytes
 /// captured via `stderr_len`.
 ///
-/// Process spawning uses `std.process.spawn` which internally interacts
-/// with the OS (CreateProcess on Windows, posix_spawn/fork+exec on POSIX).
-/// The Zig std library wraps these OS calls behind an `std.Io` interface —
-/// no `std.mem.Allocator` is required. This is consistent with the
-/// zero-allocator rule: all Sig-authored orchestration code is allocator-free,
-/// while OS-level process management is handled by the Zig runtime.
+/// Delegates to `sig.process.runCommand` which handles process spawning,
+/// stderr capture, and exit code extraction — all zero-allocator.
 pub fn runCommand(
     cmd: *const Command_Buffer,
     stderr_buf: *[STDERR_CAPTURE_SIZE]u8,
     stderr_len: *usize,
     io_ctx: std.Io,
 ) SigError!u8 {
-    // Build argv as a slice of slices pointing into the Command_Buffer.
-    // We use a stack-allocated array of slice descriptors.
-    var argv_ptrs: [MAX_CMD_ARGS][]const u8 = undefined;
-    for (0..cmd.arg_count) |i| {
-        argv_ptrs[i] = cmd.args[i][0..cmd.arg_lens[i]];
-    }
-    const argv = argv_ptrs[0..cmd.arg_count];
-
-    if (argv.len == 0) return error.BufferTooSmall;
-
-    // Configure cwd for the child process.
-    const cwd_option: std.process.Child.Cwd = if (cmd.cwd_len > 0)
-        .{ .path = cmd.cwd[0..cmd.cwd_len] }
-    else
-        .inherit;
-
-    // Spawn the child process with stderr piped for capture.
-    var child = std.process.spawn(io_ctx, .{
-        .argv = argv,
-        .cwd = cwd_option,
-        .stderr = .pipe,
-    }) catch return error.BufferTooSmall;
-    defer child.kill(io_ctx);
-
-    // Read stderr from the child into our stack buffer.
-    stderr_len.* = 0;
-    if (child.stderr) |stderr_file| {
-        var reader = stderr_file.reader(io_ctx, &.{});
-        while (stderr_len.* < STDERR_CAPTURE_SIZE) {
-            const remaining = STDERR_CAPTURE_SIZE - stderr_len.*;
-            const n = reader.interface.readSliceShort(stderr_buf[stderr_len.*..][0..remaining]) catch break;
-            if (n == 0) break;
-            stderr_len.* += n;
-        }
-    }
-
-    // Wait for the child to exit and extract the exit code.
-    const term = child.wait(io_ctx) catch return error.BufferTooSmall;
-    return switch (term) {
-        .exited => |code| code,
-        .signal => 128, // Killed by signal — return conventional 128+ code.
-        .stopped => 128,
-        .unknown => 128,
-    };
+    return sig_process.runCommand(io_ctx, cmd, stderr_buf, stderr_len, .{});
 }
 
 // ── Compile step command construction ────────────────────────────────────────
@@ -1178,13 +1079,13 @@ pub const Compile_Options = struct {
 pub fn buildCompileCommand(cmd: *Command_Buffer, opts: Compile_Options) SigError!void {
     // argv[0]: compiler binary path.
     if (opts.compiler_path.len > 0) {
-        try cmd.addArg(opts.compiler_path);
+        try cmd.appendArg(opts.compiler_path);
     } else {
-        try cmd.addArg("sig");
+        try cmd.appendArg("sig");
     }
 
     // Sub-command.
-    try cmd.addArg("build-exe");
+    try cmd.appendArg("build-exe");
 
     // Module imports: --dep name (before root) then -Mname=path
     // Zig 0.16 uses -M/--dep syntax: --dep flags declare dependencies for the
@@ -1195,8 +1096,8 @@ pub fn buildCompileCommand(cmd: *Command_Buffer, opts: Compile_Options) SigError
     // which is the source_path passed to build-exe as -Mroot=).
     for (opts.imports) |imp| {
         const name_slice = imp.name[0..imp.name_len];
-        try cmd.addArg("--dep");
-        try cmd.addArg(name_slice);
+        try cmd.appendArg("--dep");
+        try cmd.appendArg(name_slice);
     }
 
     // Emit -Mroot=<source_path> (the root module that uses the deps above).
@@ -1207,7 +1108,7 @@ pub fn buildCompileCommand(cmd: *Command_Buffer, opts: Compile_Options) SigError
         if (root_prefix.len + src_path.len > PATH_BUF_SIZE) return error.BufferTooSmall;
         @memcpy(root_buf[0..root_prefix.len], root_prefix);
         @memcpy(root_buf[root_prefix.len..][0..src_path.len], src_path);
-        try cmd.addArg(root_buf[0 .. root_prefix.len + src_path.len]);
+        try cmd.appendArg(root_buf[0 .. root_prefix.len + src_path.len]);
     }
 
     // Second pass: emit -Mname=path for each import (leaf modules, no deps).
@@ -1223,12 +1124,12 @@ pub fn buildCompileCommand(cmd: *Command_Buffer, opts: Compile_Options) SigError
         @memcpy(mod_buf[2..][0..name_slice.len], name_slice);
         mod_buf[2 + name_slice.len] = '=';
         @memcpy(mod_buf[prefix_len..][0..path_slice.len], path_slice);
-        try cmd.addArg(mod_buf[0..total]);
+        try cmd.appendArg(mod_buf[0..total]);
     }
 
     // Optimization mode: -O <mode>
-    try cmd.addArg("-O");
-    try cmd.addArg(switch (opts.optimize) {
+    try cmd.appendArg("-O");
+    try cmd.appendArg(switch (opts.optimize) {
         .Debug => "Debug",
         .ReleaseSafe => "ReleaseSafe",
         .ReleaseFast => "ReleaseFast",
@@ -1237,19 +1138,367 @@ pub fn buildCompileCommand(cmd: *Command_Buffer, opts: Compile_Options) SigError
 
     // Target triple: -target <triple> (only if specified).
     if (opts.target) |triple| {
-        try cmd.addArg("-target");
+        try cmd.appendArg("-target");
         var triple_buf: [PATH_BUF_SIZE]u8 = undefined;
         const triple_str = try triple.format(&triple_buf);
-        try cmd.addArg(triple_str);
+        try cmd.appendArg(triple_str);
     }
 
     // Cache directory: --cache-dir <dir>
-    try cmd.addArg("--cache-dir");
-    try cmd.addArg(opts.cache_dir);
+    try cmd.appendArg("--cache-dir");
+    try cmd.appendArg(opts.cache_dir);
 
     // Output name: --name <name>
-    try cmd.addArg("--name");
-    try cmd.addArg(opts.output_name);
+    try cmd.appendArg("--name");
+    try cmd.appendArg(opts.output_name);
+}
+
+// ── Version string resolution ────────────────────────────────────────────────
+
+/// Resolve zig version string via git rev-list + rev-parse.
+/// Format: "M.N.P-dev.COUNT+HASH" for dev builds, "M.N.P" for releases.
+/// Falls back to base_version if git is unavailable or fails.
+///
+/// The caller checks for `-Dversion-string` override before calling this
+/// function. All parsing uses stack buffers — zero allocators.
+pub fn resolveVersionString(
+    buf: *[VERSION_BUF_SIZE]u8,
+    base_version: []const u8,
+    is_dev: bool,
+    io: std.Io,
+) []const u8 {
+    // Release builds: no dev suffix, just return base version as-is.
+    if (!is_dev) {
+        if (base_version.len > VERSION_BUF_SIZE) return base_version[0..VERSION_BUF_SIZE];
+        @memcpy(buf[0..base_version.len], base_version);
+        return buf[0..base_version.len];
+    }
+
+    // Dev builds: run git commands to get commit count and hash.
+    const count = getGitCommitCount(io) orelse {
+        // Git failed — fall back to base version.
+        if (base_version.len > VERSION_BUF_SIZE) return base_version[0..VERSION_BUF_SIZE];
+        @memcpy(buf[0..base_version.len], base_version);
+        return buf[0..base_version.len];
+    };
+
+    const hash = getGitCommitHash(io) orelse {
+        // Git failed — fall back to base version.
+        if (base_version.len > VERSION_BUF_SIZE) return base_version[0..VERSION_BUF_SIZE];
+        @memcpy(buf[0..base_version.len], base_version);
+        return buf[0..base_version.len];
+    };
+
+    // Format: "{base_version}-dev.{count}+{hash}"
+    const dev_tag = "-dev.";
+    const plus = "+";
+    const total = base_version.len + dev_tag.len + count.len + plus.len + hash.len;
+    if (total > VERSION_BUF_SIZE) {
+        // Overflow — fall back to base version.
+        @memcpy(buf[0..base_version.len], base_version);
+        return buf[0..base_version.len];
+    }
+
+    var offset: usize = 0;
+    @memcpy(buf[offset..][0..base_version.len], base_version);
+    offset += base_version.len;
+    @memcpy(buf[offset..][0..dev_tag.len], dev_tag);
+    offset += dev_tag.len;
+    @memcpy(buf[offset..][0..count.len], count);
+    offset += count.len;
+    @memcpy(buf[offset..][0..plus.len], plus);
+    offset += plus.len;
+    @memcpy(buf[offset..][0..hash.len], hash);
+    offset += hash.len;
+
+    return buf[0..offset];
+}
+
+/// Run `git rev-list --count HEAD` and return the trimmed output, or null on failure.
+/// Uses a stack-allocated Command_Buffer and a static capture buffer.
+fn getGitCommitCount(io: std.Io) ?[]const u8 {
+    const S = struct {
+        var stdout_buf: [GIT_OUTPUT_BUF_SIZE]u8 = undefined;
+    };
+
+    var cmd = Command_Buffer{};
+    cmd.appendArg("git") catch return null;
+    cmd.appendArg("rev-list") catch return null;
+    cmd.appendArg("--count") catch return null;
+    cmd.appendArg("HEAD") catch return null;
+
+    return runGitCommand(&cmd, &S.stdout_buf, io);
+}
+
+/// Run `git rev-parse --short=9 HEAD` and return the trimmed output, or null on failure.
+/// Uses a stack-allocated Command_Buffer and a static capture buffer.
+fn getGitCommitHash(io: std.Io) ?[]const u8 {
+    const S = struct {
+        var stdout_buf: [GIT_OUTPUT_BUF_SIZE]u8 = undefined;
+    };
+
+    var cmd = Command_Buffer{};
+    cmd.appendArg("git") catch return null;
+    cmd.appendArg("rev-parse") catch return null;
+    cmd.appendArg("--short=9") catch return null;
+    cmd.appendArg("HEAD") catch return null;
+
+    return runGitCommand(&cmd, &S.stdout_buf, io);
+}
+
+/// Spawn a git command with stdout piped, capture output into the provided buffer,
+/// and return the trimmed result. Returns null on any failure.
+///
+/// Uses sig_process.spawn directly (not runCommand) because we need stdout
+/// capture, not stderr capture.
+fn runGitCommand(cmd: *const Command_Buffer, stdout_buf: *[GIT_OUTPUT_BUF_SIZE]u8, io: std.Io) ?[]const u8 {
+    var child = sig_process.spawn(io, cmd, .{
+        .stdout = .pipe,
+        .stderr = .ignore,
+    }) catch return null;
+    defer child.kill(io);
+
+    // Read stdout from the child.
+    var stdout_len: usize = 0;
+    if (child.stdout) |stdout_file| {
+        var reader = stdout_file.reader(io, &.{});
+        while (stdout_len < GIT_OUTPUT_BUF_SIZE) {
+            const remaining = GIT_OUTPUT_BUF_SIZE - stdout_len;
+            const n = reader.interface.readSliceShort(stdout_buf[stdout_len..][0..remaining]) catch break;
+            if (n == 0) break;
+            stdout_len += n;
+        }
+    }
+
+    // Wait for exit and check success.
+    const term = child.wait(io) catch return null;
+    const exit_code: u8 = switch (term) {
+        .exited => |code| code,
+        else => return null,
+    };
+    if (exit_code != 0) return null;
+
+    if (stdout_len == 0) return null;
+
+    // Trim trailing whitespace/newlines.
+    const output = stdout_buf[0..stdout_len];
+    const trimmed = std.mem.trimEnd(u8, output, &[_]u8{ '\n', '\r', ' ', '\t' });
+    if (trimmed.len == 0) return null;
+
+    return trimmed;
+}
+
+// ── Build options generation ─────────────────────────────────────────────────
+
+/// Generate build_options.zig in the cache directory.
+/// Takes build context for option values and a resolved version string.
+/// Uses a stack buffer — zero allocators.
+///
+/// The generated file contains all 22 `pub const` declarations required by
+/// `src/main.zig`, including inline enum definitions for `@"src.dev.Env"`,
+/// `@"build.IoMode"`, and `@"build.ValueInterpretMode"`.
+pub fn generateBuildOptions(
+    build_ctx: *const Build_Context,
+    version: []const u8,
+    cache_dir: []const u8,
+    io: std.Io,
+) SigError!void {
+    // 1. Build output path: <cache_dir>/build_options.zig
+    var path_buf: [PATH_BUF_SIZE]u8 = undefined;
+    const output_path = try sig_fs.joinPath(&path_buf, &[_][]const u8{ cache_dir, "build_options.zig" });
+
+    // 2. Read option flags with defaults
+    const have_llvm = build_ctx.options.getValue("enable-llvm") != null or
+        build_ctx.options.getValue("static-llvm") != null;
+    const skip_non_native = optBool(&build_ctx.options, "skip-non-native", false);
+    const llvm_has_m68k = if (have_llvm) optBool(&build_ctx.options, "llvm-has-m68k", false) else false;
+    const llvm_has_csky = if (have_llvm) optBool(&build_ctx.options, "llvm-has-csky", false) else false;
+    const llvm_has_arc = if (have_llvm) optBool(&build_ctx.options, "llvm-has-arc", false) else false;
+    const llvm_has_xtensa = if (have_llvm) optBool(&build_ctx.options, "llvm-has-xtensa", false) else false;
+    const debug_gpa = optBool(&build_ctx.options, "debug-allocator", false);
+    const enable_debug_extensions = optBool(&build_ctx.options, "debug-extensions", false);
+    const enable_logging = optBool(&build_ctx.options, "log", false);
+    const enable_link_snapshots = optBool(&build_ctx.options, "link-snapshot", false);
+    const enable_tracy = optBool(&build_ctx.options, "tracy", false);
+    const enable_tracy_callstack = optBool(&build_ctx.options, "tracy-callstack", false);
+    const enable_tracy_allocation = optBool(&build_ctx.options, "tracy-allocation", false);
+    const tracy_callstack_depth = optU32(&build_ctx.options, "tracy-callstack-depth", 10);
+    const value_tracing = optBool(&build_ctx.options, "value-tracing", false);
+
+    // dev mode: default .full
+    const dev_str = build_ctx.options.getValue("dev") orelse "full";
+    // io_mode: default .threaded
+    const io_mode_str = build_ctx.options.getValue("io-mode") orelse "threaded";
+    // value_interpret_mode: default .direct
+    const vim_str = build_ctx.options.getValue("value-interpret-mode") orelse "direct";
+
+    // mem_leak_frames: 0 for release/strip, 4 for Debug+debug-gpa
+    const is_debug = build_ctx.optimize == .Debug;
+    const is_strip = optBool(&build_ctx.options, "strip", false);
+    const mem_leak_frames: u32 = blk: {
+        if (build_ctx.options.getValue("mem-leak-frames")) |v| {
+            break :blk std.fmt.parseInt(u32, v, 10) catch 0;
+        }
+        if (is_strip) break :blk 0;
+        if (!is_debug) break :blk 0;
+        if (debug_gpa) break :blk 4;
+        break :blk 0;
+    };
+
+    // 3. Parse semver from version string
+    // Format: "M.N.P" or "M.N.P-pre+build"
+    var semver_major: []const u8 = "0";
+    var semver_minor: []const u8 = "0";
+    var semver_patch: []const u8 = "0";
+    var semver_pre: []const u8 = "";
+    var semver_build: []const u8 = "";
+    parseSemver(version, &semver_major, &semver_minor, &semver_patch, &semver_pre, &semver_build);
+
+    // 4. Get sig_version from Build_Context
+    const sig_version_str = build_ctx.sig_version[0..build_ctx.sig_version_len];
+
+    // 5. Format all declarations into the stack buffer
+    var buf: [BUILD_OPTIONS_BUF_SIZE]u8 = undefined;
+    const content = std.fmt.bufPrint(&buf,
+        \\pub const mem_leak_frames: u32 = {d};
+        \\pub const skip_non_native: bool = {s};
+        \\pub const have_llvm: bool = {s};
+        \\pub const llvm_has_m68k: bool = {s};
+        \\pub const llvm_has_csky: bool = {s};
+        \\pub const llvm_has_arc: bool = {s};
+        \\pub const llvm_has_xtensa: bool = {s};
+        \\pub const debug_gpa: bool = {s};
+        \\pub const version: [:0]const u8 = "{s}";
+        \\pub const sig_version: [:0]const u8 = "{s}";
+        \\pub const semver: @import("std").SemanticVersion = .{{
+        \\    .major = {s},
+        \\    .minor = {s},
+        \\    .patch = {s},
+        \\    .pre = "{s}",
+        \\    .build = "{s}",
+        \\}};
+        \\pub const enable_debug_extensions: bool = {s};
+        \\pub const enable_logging: bool = {s};
+        \\pub const enable_link_snapshots: bool = {s};
+        \\pub const enable_tracy: bool = {s};
+        \\pub const enable_tracy_callstack: bool = {s};
+        \\pub const enable_tracy_allocation: bool = {s};
+        \\pub const tracy_callstack_depth: u32 = {d};
+        \\pub const value_tracing: bool = {s};
+        \\pub const @"src.dev.Env" = enum (u4) {{
+        \\    bootstrap = 0,
+        \\    core = 1,
+        \\    full = 2,
+        \\    c_source = 3,
+        \\    ast_gen = 4,
+        \\    sema = 5,
+        \\    @"aarch64-linux" = 6,
+        \\    cbe = 7,
+        \\    @"powerpc-linux" = 8,
+        \\    @"riscv64-linux" = 9,
+        \\    spirv = 10,
+        \\    wasm = 11,
+        \\    @"x86_64-linux" = 12,
+        \\}};
+        \\pub const dev: @"src.dev.Env" = .{s};
+        \\pub const @"build.IoMode" = enum (u1) {{
+        \\    threaded = 0,
+        \\    evented = 1,
+        \\}};
+        \\pub const io_mode: @"build.IoMode" = .{s};
+        \\pub const @"build.ValueInterpretMode" = enum (u1) {{
+        \\    direct = 0,
+        \\    by_name = 1,
+        \\}};
+        \\pub const value_interpret_mode: @"build.ValueInterpretMode" = .{s};
+        \\
+    , .{
+        mem_leak_frames,
+        boolStr(skip_non_native),
+        boolStr(have_llvm),
+        boolStr(llvm_has_m68k),
+        boolStr(llvm_has_csky),
+        boolStr(llvm_has_arc),
+        boolStr(llvm_has_xtensa),
+        boolStr(debug_gpa),
+        version,
+        sig_version_str,
+        semver_major,
+        semver_minor,
+        semver_patch,
+        semver_pre,
+        semver_build,
+        boolStr(enable_debug_extensions),
+        boolStr(enable_logging),
+        boolStr(enable_link_snapshots),
+        boolStr(enable_tracy),
+        boolStr(enable_tracy_callstack),
+        boolStr(enable_tracy_allocation),
+        tracy_callstack_depth,
+        boolStr(value_tracing),
+        dev_str,
+        io_mode_str,
+        vim_str,
+    }) catch return error.BufferTooSmall;
+
+    // 6. Write file
+    try sig_fs.writeFile(io, output_path, content);
+}
+
+/// Return "true" or "false" as a string slice for bool formatting.
+fn boolStr(val: bool) []const u8 {
+    return if (val) "true" else "false";
+}
+
+/// Read a boolean option from the map, returning `default` if absent.
+fn optBool(map: *const Option_Map, name: []const u8, default: bool) bool {
+    const value = map.getValue(name) orelse return default;
+    if (std.mem.eql(u8, value, "true")) return true;
+    if (std.mem.eql(u8, value, "false")) return false;
+    return default;
+}
+
+/// Read a u32 option from the map, returning `default` if absent or unparseable.
+fn optU32(map: *const Option_Map, name: []const u8, default: u32) u32 {
+    const value = map.getValue(name) orelse return default;
+    return std.fmt.parseInt(u32, value, 10) catch default;
+}
+
+/// Parse a semver version string into its components.
+/// Handles "M.N.P", "M.N.P-pre", and "M.N.P-pre+build" formats.
+fn parseSemver(
+    version: []const u8,
+    major: *[]const u8,
+    minor: *[]const u8,
+    patch: *[]const u8,
+    pre: *[]const u8,
+    build_meta: *[]const u8,
+) void {
+    // Split on first '-' to separate "M.N.P" from optional "pre+build"
+    var core_part = version;
+    var extra_part: []const u8 = "";
+
+    if (std.mem.indexOfScalar(u8, version, '-')) |dash_pos| {
+        core_part = version[0..dash_pos];
+        extra_part = version[dash_pos + 1 ..];
+    }
+
+    // Parse M.N.P from core_part
+    var dot_iter = std.mem.splitScalar(u8, core_part, '.');
+    major.* = dot_iter.next() orelse "0";
+    minor.* = dot_iter.next() orelse "0";
+    patch.* = dot_iter.next() orelse "0";
+
+    // Parse pre and build from extra_part
+    if (extra_part.len > 0) {
+        if (std.mem.indexOfScalar(u8, extra_part, '+')) |plus_pos| {
+            pre.* = extra_part[0..plus_pos];
+            build_meta.* = extra_part[plus_pos + 1 ..];
+        } else {
+            pre.* = extra_part;
+            build_meta.* = "";
+        }
+    }
 }
 
 // ── Install step file exclusion ──────────────────────────────────────────────
@@ -1790,6 +2039,13 @@ pub const Build_Context = struct {
     /// before calling build.sig's build function.
     compiler_path: [PATH_BUF_SIZE]u8 = undefined,
     compiler_path_len: usize = 0,
+    /// Zig upstream version components from build.sig's zig_version constant.
+    zig_version_major: u32 = 0,
+    zig_version_minor: u32 = 0,
+    zig_version_patch: u32 = 0,
+    /// Sig version string from build.sig's sig_version_string constant.
+    sig_version: [64]u8 = undefined,
+    sig_version_len: usize = 0,
 
     // --- Public API (called by build.sig) ---
 
@@ -1904,9 +2160,9 @@ pub const Build_Context = struct {
     /// The step entry's `desc` field stores the source_path (set by addCompileStep).
     /// The step entry's `name` field stores the output binary name.
     ///
-    /// For the sig compiler itself (src/main.zig), compilation requires LLVM,
-    /// build_options, and other complex setup that only build.zig handles.
-    /// In that case, we delegate to `sig build --build-file build.zig`.
+    /// For the sig compiler itself (src/main.zig), compilation resolves the
+    /// version string, generates build_options.zig in the cache, and builds
+    /// with module dependencies (build_options, aro).
     /// For all other sources, we use direct `build-exe` invocation.
     fn compileStepFn(ctx: *Step_Context) SigError!void {
         const build_ctx = ctx.build_ctx;
@@ -1923,80 +2179,130 @@ pub const Build_Context = struct {
         const compiler = if (ctx.compiler_path.len > 0) ctx.compiler_path else "sig";
 
         // Check if this is the sig compiler compilation (src/main.zig).
-        // The compiler needs LLVM, build_options, etc. — delegate to build.zig.
+        // The compiler needs build_options.zig and aro module dependencies.
         const is_compiler_build = std.mem.eql(u8, source_path, "src/main.zig");
 
         if (is_compiler_build) {
-            // Delegate to build.zig via `sig build --build-file build.zig`.
-            var cmd: Command_Buffer = .{};
-            try cmd.addArg(compiler);
-            try cmd.addArg("build");
-            try cmd.addArg("--build-file");
-            try cmd.addArg("build.zig");
+            // Direct compiler compilation — no build.zig delegation.
+            // 1. Resolve version string
+            var version_buf: [VERSION_BUF_SIZE]u8 = undefined;
+            const version_override = build_ctx.options.getValue("version-string");
+            const version_str = if (version_override) |v| v else blk: {
+                // Determine if this is a dev build (sig_version has pre-release tag)
+                const sig_ver = build_ctx.sig_version[0..build_ctx.sig_version_len];
+                const is_dev = std.mem.indexOfScalar(u8, sig_ver, '-') != null;
+                // Format base version from zig_version components
+                var base_buf: [64]u8 = undefined;
+                const base_version = std.fmt.bufPrint(&base_buf, "{d}.{d}.{d}", .{
+                    build_ctx.zig_version_major,
+                    build_ctx.zig_version_minor,
+                    build_ctx.zig_version_patch,
+                }) catch break :blk build_ctx.sig_version[0..build_ctx.sig_version_len];
+                break :blk resolveVersionString(&version_buf, base_version, is_dev, io);
+            };
 
-            // Forward -Doptimize
+            // 2. Generate build_options.zig in cache
+            try generateBuildOptions(build_ctx, version_str, cache_dir, io);
+
+            // 3. Build and execute compile command with module dependencies.
+            var cmd: Command_Buffer = .{};
+
+            // argv[0]: compiler binary path.
+            try cmd.appendArg(compiler);
+
+            // Sub-command.
+            try cmd.appendArg("build-exe");
+
+            // Module dependencies: --dep flags before root module.
+            try cmd.appendArg("--dep");
+            try cmd.appendArg("build_options");
+            try cmd.appendArg("--dep");
+            try cmd.appendArg("aro");
+
+            // Root module: -Mroot=src/main.zig
             {
-                var opt_buf: [64]u8 = undefined;
-                const opt_prefix = "-Doptimize=";
-                const opt_val = switch (build_ctx.optimize) {
-                    .Debug => "Debug",
-                    .ReleaseSafe => "ReleaseSafe",
-                    .ReleaseFast => "ReleaseFast",
-                    .ReleaseSmall => "ReleaseSmall",
-                };
-                @memcpy(opt_buf[0..opt_prefix.len], opt_prefix);
-                @memcpy(opt_buf[opt_prefix.len..][0..opt_val.len], opt_val);
-                try cmd.addArg(opt_buf[0 .. opt_prefix.len + opt_val.len]);
+                var root_buf: [PATH_BUF_SIZE]u8 = undefined;
+                const root_prefix = "-Mroot=";
+                if (root_prefix.len + source_path.len > PATH_BUF_SIZE) return error.BufferTooSmall;
+                @memcpy(root_buf[0..root_prefix.len], root_prefix);
+                @memcpy(root_buf[root_prefix.len..][0..source_path.len], source_path);
+                try cmd.appendArg(root_buf[0 .. root_prefix.len + source_path.len]);
             }
 
-            // Forward -Dtarget if set.
+            // Module paths: -Mbuild_options=<cache_dir>/build_options.zig
+            {
+                var mod_buf: [PATH_BUF_SIZE]u8 = undefined;
+                var bo_path_buf: [PATH_BUF_SIZE]u8 = undefined;
+                const bo_segs = [_][]const u8{ cache_dir, "build_options.zig" };
+                const bo_path = sig_fs.joinPath(&bo_path_buf, &bo_segs) catch return error.BufferTooSmall;
+                const prefix = "-Mbuild_options=";
+                if (prefix.len + bo_path.len > PATH_BUF_SIZE) return error.BufferTooSmall;
+                @memcpy(mod_buf[0..prefix.len], prefix);
+                @memcpy(mod_buf[prefix.len..][0..bo_path.len], bo_path);
+                try cmd.appendArg(mod_buf[0 .. prefix.len + bo_path.len]);
+            }
+
+            // Module paths: -Maro=lib/compiler/aro/aro.zig
+            {
+                var mod_buf: [PATH_BUF_SIZE]u8 = undefined;
+                const prefix = "-Maro=";
+                const aro_path = "lib/compiler/aro/aro.zig";
+                if (prefix.len + aro_path.len > PATH_BUF_SIZE) return error.BufferTooSmall;
+                @memcpy(mod_buf[0..prefix.len], prefix);
+                @memcpy(mod_buf[prefix.len..][0..aro_path.len], aro_path);
+                try cmd.appendArg(mod_buf[0 .. prefix.len + aro_path.len]);
+            }
+
+            // Optimization mode: -O<mode>
+            try cmd.appendArg("-O");
+            try cmd.appendArg(switch (build_ctx.optimize) {
+                .Debug => "Debug",
+                .ReleaseSafe => "ReleaseSafe",
+                .ReleaseFast => "ReleaseFast",
+                .ReleaseSmall => "ReleaseSmall",
+            });
+
+            // Target triple: -target <triple> (only if specified).
             if (build_ctx.target.arch_len > 0) {
-                var target_buf: [PATH_BUF_SIZE]u8 = undefined;
+                try cmd.appendArg("-target");
                 var triple_buf: [PATH_BUF_SIZE]u8 = undefined;
                 const triple_str = try build_ctx.target.format(&triple_buf);
-                const target_prefix = "-Dtarget=";
-                if (target_prefix.len + triple_str.len > PATH_BUF_SIZE) return error.BufferTooSmall;
-                @memcpy(target_buf[0..target_prefix.len], target_prefix);
-                @memcpy(target_buf[target_prefix.len..][0..triple_str.len], triple_str);
-                try cmd.addArg(target_buf[0 .. target_prefix.len + triple_str.len]);
+                try cmd.appendArg(triple_str);
             }
 
-            // Forward relevant -D options from the build context.
-            // Check for common options that build.zig needs.
-            const forward_opts = [_][]const u8{
-                "no-lib", "no-langref", "lib-files-only", "no-bin",
-                "static-llvm", "enable-llvm", "strip", "single-threaded",
-            };
-            for (forward_opts) |opt_name| {
-                if (build_ctx.options.getValue(opt_name)) |val| {
-                    var fwd_buf: [PATH_BUF_SIZE]u8 = undefined;
-                    const d_prefix = "-D";
-                    const eq = "=";
-                    const total = d_prefix.len + opt_name.len + eq.len + val.len;
-                    if (total <= PATH_BUF_SIZE) {
-                        @memcpy(fwd_buf[0..d_prefix.len], d_prefix);
-                        @memcpy(fwd_buf[d_prefix.len..][0..opt_name.len], opt_name);
-                        @memcpy(fwd_buf[d_prefix.len + opt_name.len ..][0..eq.len], eq);
-                        @memcpy(fwd_buf[d_prefix.len + opt_name.len + eq.len ..][0..val.len], val);
-                        cmd.addArg(fwd_buf[0..total]) catch continue;
-                    }
-                }
+            // Strip: --strip if strip option is set.
+            const is_strip = optBool(&build_ctx.options, "strip", false);
+            if (is_strip) {
+                try cmd.appendArg("--strip");
             }
 
-            // Forward cache dir.
-            try cmd.addArg("--cache-dir");
-            try cmd.addArg(cache_dir);
-
-            // Forward install prefix.
-            try cmd.addArg("--prefix");
-            try cmd.addArg(install_prefix);
-
-            // Set cwd to build root.
-            const build_root = build_ctx.build_root[0..build_ctx.build_root_len];
-            if (build_root.len > 0) {
-                try cmd.setCwd(build_root);
+            // Output binary: -femit-bin=<prefix>/bin/sig
+            {
+                var emit_buf: [PATH_BUF_SIZE]u8 = undefined;
+                const emit_prefix = "-femit-bin=";
+                var emit_path_buf: [PATH_BUF_SIZE]u8 = undefined;
+                const emit_segs = [_][]const u8{ install_prefix, "bin", output_name };
+                const emit_path = sig_fs.joinPath(&emit_path_buf, &emit_segs) catch return error.BufferTooSmall;
+                if (emit_prefix.len + emit_path.len > PATH_BUF_SIZE) return error.BufferTooSmall;
+                @memcpy(emit_buf[0..emit_prefix.len], emit_prefix);
+                @memcpy(emit_buf[emit_prefix.len..][0..emit_path.len], emit_path);
+                try cmd.appendArg(emit_buf[0 .. emit_prefix.len + emit_path.len]);
             }
 
+            // Cache directory: --cache-dir <dir>
+            try cmd.appendArg("--cache-dir");
+            try cmd.appendArg(cache_dir);
+
+            // Zig lib directory: --zig-lib-dir (derived from compiler path).
+            // The zig lib dir is typically alongside the compiler binary.
+
+            // LLVM linking flags: when have_llvm is true, forward static LLVM
+            // library flags and platform-specific system libraries.
+            // TODO: Add actual LLVM linking flags (-lLLVM, static libs, and
+            // on Windows: -lntdll, -lws2_32, etc.) when LLVM support is enabled.
+            // For now, LLVM linking is complex and will be refined in a follow-up.
+
+            // Execute the command and propagate errors.
             var stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined;
             var stderr_len: usize = 0;
             const exit_code = try runCommand(&cmd, &stderr_buf, &stderr_len, io);
@@ -2043,7 +2349,7 @@ pub const Build_Context = struct {
                 if (emit_prefix.len + emit_path.len > PATH_BUF_SIZE) return error.BufferTooSmall;
                 @memcpy(emit_buf[0..emit_prefix.len], emit_prefix);
                 @memcpy(emit_buf[emit_prefix.len..][0..emit_path.len], emit_path);
-                try cmd.addArg(emit_buf[0 .. emit_prefix.len + emit_path.len]);
+                try cmd.appendArg(emit_buf[0 .. emit_prefix.len + emit_path.len]);
             }
 
             // Add --zig-lib-dir if we can derive it from the compiler path.
@@ -2071,18 +2377,18 @@ pub const Build_Context = struct {
         const compiler = if (ctx.compiler_path.len > 0) ctx.compiler_path else "sig";
 
         var cmd: Command_Buffer = .{};
-        try cmd.addArg(compiler);
-        try cmd.addArg("test");
+        try cmd.appendArg(compiler);
+        try cmd.appendArg("test");
 
         // Emit --dep flags first (before the root module / source file).
         for (build_ctx.modules.entries[0..build_ctx.modules.count]) |mod_entry| {
             const name_slice = mod_entry.name[0..mod_entry.name_len];
-            try cmd.addArg("--dep");
-            try cmd.addArg(name_slice);
+            try cmd.appendArg("--dep");
+            try cmd.appendArg(name_slice);
         }
 
         // Source path as positional argument (root module).
-        try cmd.addArg(source_path);
+        try cmd.appendArg(source_path);
 
         // Emit -Mname=path for each module (leaf modules, after root).
         for (build_ctx.modules.entries[0..build_ctx.modules.count]) |mod_entry| {
@@ -2098,12 +2404,12 @@ pub const Build_Context = struct {
             @memcpy(mod_buf[2..][0..name_slice.len], name_slice);
             mod_buf[2 + name_slice.len] = '=';
             @memcpy(mod_buf[prefix_len..][0..path_slice.len], path_slice);
-            try cmd.addArg(mod_buf[0..total]);
+            try cmd.appendArg(mod_buf[0..total]);
         }
 
         // Cache directory.
-        try cmd.addArg("--cache-dir");
-        try cmd.addArg(cache_dir);
+        try cmd.appendArg("--cache-dir");
+        try cmd.appendArg(cache_dir);
 
         var stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined;
         var stderr_len: usize = 0;
@@ -2320,11 +2626,11 @@ pub fn verifyIdentical(
 
     // ── Step 2: Run `zig build` ─────────────────────────────────────────
     var zig_cmd: Command_Buffer = .{};
-    zig_cmd.addArg("zig") catch {
+    zig_cmd.appendArg("zig") catch {
         printMsg(io, "error: failed to construct zig build command", .{});
         return false;
     };
-    zig_cmd.addArg("build") catch return false;
+    zig_cmd.appendArg("build") catch return false;
 
     // Forward -D options.
     for (config.options.entries[0..]) |entry| {
@@ -2340,7 +2646,7 @@ pub fn verifyIdentical(
             @memcpy(opt_buf[prefix.len..][0..key.len], key);
             @memcpy(opt_buf[prefix.len + key.len ..][0..eq.len], eq);
             @memcpy(opt_buf[prefix.len + key.len + eq.len ..][0..val.len], val);
-            zig_cmd.addArg(opt_buf[0..total]) catch break;
+            zig_cmd.appendArg(opt_buf[0..total]) catch break;
         }
     }
 
@@ -2348,7 +2654,7 @@ pub fn verifyIdentical(
     if (config.thread_count > 0) {
         var j_buf: [32]u8 = undefined;
         const j_str = std.fmt.bufPrint(&j_buf, "-j{d}", .{config.thread_count}) catch "-j4";
-        zig_cmd.addArg(j_str) catch {};
+        zig_cmd.appendArg(j_str) catch {};
     }
 
     // Set cwd to build root.
@@ -2478,11 +2784,11 @@ pub fn runBenchmark(
 
     // ── Run zig build and measure wall-clock time ───────────────────────
     var zig_cmd: Command_Buffer = .{};
-    zig_cmd.addArg("zig") catch {
+    zig_cmd.appendArg("zig") catch {
         printMsg(io, "error: failed to construct zig build command", .{});
         return;
     };
-    zig_cmd.addArg("build") catch {
+    zig_cmd.appendArg("build") catch {
         printMsg(io, "error: failed to add 'build' arg", .{});
         return;
     };
@@ -2501,7 +2807,7 @@ pub fn runBenchmark(
             @memcpy(opt_buf[prefix.len..][0..key.len], key);
             @memcpy(opt_buf[prefix.len + key.len ..][0..eq.len], eq);
             @memcpy(opt_buf[prefix.len + key.len + eq.len ..][0..val.len], val);
-            zig_cmd.addArg(opt_buf[0..total_len]) catch break;
+            zig_cmd.appendArg(opt_buf[0..total_len]) catch break;
         }
     }
 
@@ -2509,7 +2815,7 @@ pub fn runBenchmark(
     if (config.thread_count > 0) {
         var j_buf: [32]u8 = undefined;
         const j_str = std.fmt.bufPrint(&j_buf, "-j{d}", .{config.thread_count}) catch "-j4";
-        zig_cmd.addArg(j_str) catch {};
+        zig_cmd.appendArg(j_str) catch {};
     }
 
     // Set cwd to build root.
@@ -2616,25 +2922,25 @@ pub fn verifySelfHosting(
 
     // Use the provided compiler path, or fall back to "sig".
     if (compiler_path.len > 0) {
-        cmd.addArg(compiler_path) catch {
+        cmd.appendArg(compiler_path) catch {
             printMsg(io, "error: compiler path too long", .{});
             return false;
         };
     } else {
-        cmd.addArg("sig") catch {
+        cmd.appendArg("sig") catch {
             printMsg(io, "error: failed to add compiler arg", .{});
             return false;
         };
     }
 
-    cmd.addArg("build-exe") catch return false;
-    cmd.addArg("--dep") catch return false;
-    cmd.addArg("sig") catch return false;
-    cmd.addArg("-Mroot=tools/sig_build/main.sig") catch return false;
-    cmd.addArg("-Msig=lib/sig/sig.zig") catch return false;
-    cmd.addArg("--name") catch return false;
-    cmd.addArg("sig-build-verify") catch return false;
-    cmd.addArg("-femit-bin=.sig-cache/sig-build-verify") catch return false;
+    cmd.appendArg("build-exe") catch return false;
+    cmd.appendArg("--dep") catch return false;
+    cmd.appendArg("sig") catch return false;
+    cmd.appendArg("-Mroot=tools/sig_build/main.sig") catch return false;
+    cmd.appendArg("-Msig=lib/sig/sig.zig") catch return false;
+    cmd.appendArg("--name") catch return false;
+    cmd.appendArg("sig-build-verify") catch return false;
+    cmd.appendArg("-femit-bin=.sig-cache/sig-build-verify") catch return false;
 
     printMsg(io, "rebuilding: sig build-exe tools/sig_build/main.sig ...", .{});
 
@@ -2764,7 +3070,7 @@ pub fn fatal(io: std.Io, comptime fmt: []const u8, args: anytype) noreturn {
     } else |_| {
         stderr.writeStreamingAll(io, "error: fatal\n") catch {};
     }
-    std.process.exit(1);
+    sig_process.exit(1);
 }
 
 /// Write an informational message to stdout.
@@ -2922,38 +3228,38 @@ fn compileBuildSig(
     //   sig, std              are leaf modules (no deps)
     var cmd: Command_Buffer = .{};
 
-    cmd.addArg(compiler_path) catch fatal(io, "compiler path too long for command buffer", .{});
-    cmd.addArg("build-exe") catch fatal(io, "failed to add build-exe arg", .{});
+    cmd.appendArg(compiler_path) catch fatal(io, "compiler path too long for command buffer", .{});
+    cmd.appendArg("build-exe") catch fatal(io, "failed to add build-exe arg", .{});
     // Root module deps (build, sig_build, sig, std) — must come before -Mroot=
-    cmd.addArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
-    cmd.addArg("build") catch fatal(io, "failed to add dep name", .{});
-    cmd.addArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
-    cmd.addArg("sig_build") catch fatal(io, "failed to add dep name", .{});
-    cmd.addArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
-    cmd.addArg("sig") catch fatal(io, "failed to add dep name", .{});
-    cmd.addArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
-    cmd.addArg("std") catch fatal(io, "failed to add dep name", .{});
-    cmd.addArg(root_mod_flag) catch fatal(io, "root mod flag too long for command buffer", .{});
+    cmd.appendArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
+    cmd.appendArg("build") catch fatal(io, "failed to add dep name", .{});
+    cmd.appendArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
+    cmd.appendArg("sig_build") catch fatal(io, "failed to add dep name", .{});
+    cmd.appendArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
+    cmd.appendArg("sig") catch fatal(io, "failed to add dep name", .{});
+    cmd.appendArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
+    cmd.appendArg("std") catch fatal(io, "failed to add dep name", .{});
+    cmd.appendArg(root_mod_flag) catch fatal(io, "root mod flag too long for command buffer", .{});
     // sig_build deps (sig, std) — must come before -Msig_build=
-    cmd.addArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
-    cmd.addArg("sig") catch fatal(io, "failed to add dep name", .{});
-    cmd.addArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
-    cmd.addArg("std") catch fatal(io, "failed to add dep name", .{});
-    cmd.addArg(sig_build_mod_flag) catch fatal(io, "sig_build mod flag too long for command buffer", .{});
+    cmd.appendArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
+    cmd.appendArg("sig") catch fatal(io, "failed to add dep name", .{});
+    cmd.appendArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
+    cmd.appendArg("std") catch fatal(io, "failed to add dep name", .{});
+    cmd.appendArg(sig_build_mod_flag) catch fatal(io, "sig_build mod flag too long for command buffer", .{});
     // build deps (sig_build) — must come before -Mbuild=
-    cmd.addArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
-    cmd.addArg("sig_build") catch fatal(io, "failed to add dep name", .{});
-    cmd.addArg(build_mod_flag) catch fatal(io, "build mod flag too long for command buffer", .{});
+    cmd.appendArg("--dep") catch fatal(io, "failed to add --dep arg", .{});
+    cmd.appendArg("sig_build") catch fatal(io, "failed to add dep name", .{});
+    cmd.appendArg(build_mod_flag) catch fatal(io, "build mod flag too long for command buffer", .{});
     // Leaf modules (no deps)
-    cmd.addArg(sig_mod_flag) catch fatal(io, "sig mod flag too long for command buffer", .{});
-    cmd.addArg(std_mod_flag) catch fatal(io, "std mod flag too long for command buffer", .{});
-    cmd.addArg("--cache-dir") catch fatal(io, "failed to add --cache-dir arg", .{});
-    cmd.addArg(local_cache_dir) catch fatal(io, "local cache dir too long for command buffer", .{});
-    cmd.addArg("--global-cache-dir") catch fatal(io, "failed to add --global-cache-dir arg", .{});
-    cmd.addArg(global_cache_dir) catch fatal(io, "global cache dir too long for command buffer", .{});
-    cmd.addArg("--zig-lib-dir") catch fatal(io, "failed to add --zig-lib-dir arg", .{});
-    cmd.addArg(zig_lib_dir) catch fatal(io, "zig lib dir too long for command buffer", .{});
-    cmd.addArg(emit_flag) catch fatal(io, "emit flag too long for command buffer", .{});
+    cmd.appendArg(sig_mod_flag) catch fatal(io, "sig mod flag too long for command buffer", .{});
+    cmd.appendArg(std_mod_flag) catch fatal(io, "std mod flag too long for command buffer", .{});
+    cmd.appendArg("--cache-dir") catch fatal(io, "failed to add --cache-dir arg", .{});
+    cmd.appendArg(local_cache_dir) catch fatal(io, "local cache dir too long for command buffer", .{});
+    cmd.appendArg("--global-cache-dir") catch fatal(io, "failed to add --global-cache-dir arg", .{});
+    cmd.appendArg(global_cache_dir) catch fatal(io, "global cache dir too long for command buffer", .{});
+    cmd.appendArg("--zig-lib-dir") catch fatal(io, "failed to add --zig-lib-dir arg", .{});
+    cmd.appendArg(zig_lib_dir) catch fatal(io, "zig lib dir too long for command buffer", .{});
+    cmd.appendArg(emit_flag) catch fatal(io, "emit flag too long for command buffer", .{});
 
     if (verbose) {
         printMsg(io, "compiling build host: {s} build-exe -Mroot={s} -Mbuild={s}", .{ compiler_path, host_src_path, build_file_path });
@@ -2972,7 +3278,7 @@ fn compileBuildSig(
 
     // Exit code 2: compile errors already reported by the compiler.
     if (exit_code == 2) {
-        std.process.exit(2);
+        sig_process.exit(2);
     }
 
     // Other non-zero: report failure with stderr.
@@ -2981,7 +3287,7 @@ fn compileBuildSig(
     } else {
         printMsg(io, "build host compilation failed with exit code {d}", .{exit_code});
     }
-    std.process.exit(1);
+    sig_process.exit(1);
 }
 
 // ── Entry point ─────────────────────────────────────────────────────────────
@@ -2993,14 +3299,10 @@ pub fn main(init: std.process.Init) !void {
     var runner_args: Runner_Args = .{};
     var config: Cli_Config = .{};
 
-    // Access raw argv. On POSIX this is zero-copy (no allocator).
-    // On Windows, we use init.gpa for UTF-16→UTF-8 decoding only.
-    const use_allocator = @import("builtin").os.tag == .windows;
-    var args_it = if (use_allocator)
-        try init.minimal.args.iterateAllocator(init.gpa)
-    else
-        init.minimal.args.iterate();
-    defer if (use_allocator) args_it.deinit();
+    // Access raw argv via sig.process.Argv_Iterator — zero-allocator on all platforms.
+    // On POSIX this is zero-copy; on Windows it decodes WTF-16 into a stack buffer.
+    var argv_buf: [4096]u8 = undefined;
+    var args_it = sig_process.Argv_Iterator.init(init.minimal.args.vector, &argv_buf);
 
     // Count total args to validate we have at least 6.
     var arg_count: usize = 0;
@@ -3008,7 +3310,7 @@ pub fn main(init: std.process.Init) !void {
     // Use a bounded buffer for the fixed args, then parse user args inline.
 
     // argv[0]: runner binary path
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[0] (runner binary) path too long", .{});
         @memcpy(runner_args.runner_binary[0..arg.len], arg);
         runner_args.runner_binary_len = arg.len;
@@ -3016,7 +3318,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[1]: sig compiler path
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[1] (compiler path) too long", .{});
         @memcpy(runner_args.compiler_path[0..arg.len], arg);
         runner_args.compiler_path_len = arg.len;
@@ -3024,7 +3326,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[2]: zig lib directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[2] (zig lib dir) too long", .{});
         @memcpy(runner_args.zig_lib_dir[0..arg.len], arg);
         runner_args.zig_lib_dir_len = arg.len;
@@ -3032,7 +3334,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[3]: build root directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[3] (build root) too long", .{});
         @memcpy(runner_args.build_root[0..arg.len], arg);
         runner_args.build_root_len = arg.len;
@@ -3040,7 +3342,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[4]: local cache directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[4] (local cache dir) too long", .{});
         @memcpy(runner_args.local_cache_dir[0..arg.len], arg);
         runner_args.local_cache_dir_len = arg.len;
@@ -3048,7 +3350,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[5]: global cache directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > PATH_BUF_SIZE) fatal(io, "argv[5] (global cache dir) too long", .{});
         @memcpy(runner_args.global_cache_dir[0..arg.len], arg);
         runner_args.global_cache_dir_len = arg.len;
@@ -3061,7 +3363,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[6..]: user arguments (step names, -D flags, -j, --verbose, etc.)
-    while (args_it.next()) |arg| {
+    while (args_it.next() catch fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len >= 2 and arg[0] == '-' and arg[1] == 'D') {
             // -Dname=value or -Dname (boolean shorthand)
             parseOption(&config.options, arg) catch {
@@ -3073,7 +3375,7 @@ pub fn main(init: std.process.Init) !void {
                 config.thread_count = count;
             } else {
                 // -j N form: next arg is the count.
-                if (args_it.next()) |next_arg| {
+                if (args_it.next() catch fatal(io, "argv decode error", .{})) |next_arg| {
                     config.thread_count = std.fmt.parseInt(usize, next_arg, 10) catch {
                         fatal(io, "invalid thread count: '{s}'", .{next_arg});
                     };
@@ -3100,8 +3402,18 @@ pub fn main(init: std.process.Init) !void {
             } else if (std.mem.eql(u8, arg, "--prefix") or
                 std.mem.eql(u8, arg, "--maxrss"))
             {
-                // Options handled by the build host — skip the flag and its value.
-                _ = args_it.next();
+                // Store --prefix for forwarding to build host.
+                if (std.mem.eql(u8, arg, "--prefix")) {
+                    if (args_it.next()) |value| {
+                        if (value.len <= PATH_BUF_SIZE) {
+                            @memcpy(config.install_prefix[0..value.len], value);
+                            config.install_prefix_len = value.len;
+                        }
+                    } else |_| {}
+                } else {
+                    // --maxrss: skip the value
+                    _ = args_it.next() catch {};
+                }
             } else {
                 fatal(io, "unknown option: '{s}'", .{arg});
             }
@@ -3155,17 +3467,17 @@ pub fn main(init: std.process.Init) !void {
     // We reconstruct the argv from runner_args and config.
     var host_cmd: Command_Buffer = .{};
 
-    host_cmd.addArg(build_host_binary) catch fatal(io, "host binary path too long", .{});
-    host_cmd.addArg(runner_args.compiler_path[0..runner_args.compiler_path_len]) catch fatal(io, "compiler path too long", .{});
-    host_cmd.addArg(runner_args.zig_lib_dir[0..runner_args.zig_lib_dir_len]) catch fatal(io, "zig lib dir too long", .{});
-    host_cmd.addArg(build_root) catch fatal(io, "build root too long", .{});
-    host_cmd.addArg(runner_args.local_cache_dir[0..runner_args.local_cache_dir_len]) catch fatal(io, "local cache dir too long", .{});
-    host_cmd.addArg(runner_args.global_cache_dir[0..runner_args.global_cache_dir_len]) catch fatal(io, "global cache dir too long", .{});
+    host_cmd.appendArg(build_host_binary) catch fatal(io, "host binary path too long", .{});
+    host_cmd.appendArg(runner_args.compiler_path[0..runner_args.compiler_path_len]) catch fatal(io, "compiler path too long", .{});
+    host_cmd.appendArg(runner_args.zig_lib_dir[0..runner_args.zig_lib_dir_len]) catch fatal(io, "zig lib dir too long", .{});
+    host_cmd.appendArg(build_root) catch fatal(io, "build root too long", .{});
+    host_cmd.appendArg(runner_args.local_cache_dir[0..runner_args.local_cache_dir_len]) catch fatal(io, "local cache dir too long", .{});
+    host_cmd.appendArg(runner_args.global_cache_dir[0..runner_args.global_cache_dir_len]) catch fatal(io, "global cache dir too long", .{});
 
     // Forward user args: step names, -D flags, -j, --verbose, etc.
     const requested = config.requested_steps.slice();
     for (requested) |step_name| {
-        host_cmd.addArg(step_name) catch fatal(io, "step name too long for command buffer", .{});
+        host_cmd.appendArg(step_name) catch fatal(io, "step name too long for command buffer", .{});
     }
 
     // Forward -D options
@@ -3182,7 +3494,7 @@ pub fn main(init: std.process.Init) !void {
             @memcpy(opt_buf[d_prefix.len..][0..key.len], key);
             @memcpy(opt_buf[d_prefix.len + key.len ..][0..eq.len], eq);
             @memcpy(opt_buf[d_prefix.len + key.len + eq.len ..][0..val.len], val);
-            host_cmd.addArg(opt_buf[0..total_len]) catch {};
+            host_cmd.appendArg(opt_buf[0..total_len]) catch {};
         }
     }
 
@@ -3190,18 +3502,18 @@ pub fn main(init: std.process.Init) !void {
     if (config.thread_count > 0) {
         var j_buf: [32]u8 = undefined;
         const j_str = std.fmt.bufPrint(&j_buf, "-j{d}", .{config.thread_count}) catch "-j4";
-        host_cmd.addArg(j_str) catch {};
+        host_cmd.appendArg(j_str) catch {};
     }
 
     // Forward flags
     if (config.verbose) {
-        host_cmd.addArg("--verbose") catch {};
+        host_cmd.appendArg("--verbose") catch {};
     }
     if (config.benchmark) {
-        host_cmd.addArg("--benchmark") catch {};
+        host_cmd.appendArg("--benchmark") catch {};
     }
     if (config.verify_identical) {
-        host_cmd.addArg("--verify-identical") catch {};
+        host_cmd.appendArg("--verify-identical") catch {};
     }
     if (config.self_test) {
         if (config.self_test_compiler_len > 0) {
@@ -3211,11 +3523,17 @@ pub fn main(init: std.process.Init) !void {
             if (st_prefix.len + st_val.len <= PATH_BUF_SIZE) {
                 @memcpy(st_buf[0..st_prefix.len], st_prefix);
                 @memcpy(st_buf[st_prefix.len..][0..st_val.len], st_val);
-                host_cmd.addArg(st_buf[0 .. st_prefix.len + st_val.len]) catch {};
+                host_cmd.appendArg(st_buf[0 .. st_prefix.len + st_val.len]) catch {};
             }
         } else {
-            host_cmd.addArg("--self-test") catch {};
+            host_cmd.appendArg("--self-test") catch {};
         }
+    }
+
+    // Forward --prefix if specified
+    if (config.install_prefix_len > 0) {
+        host_cmd.appendArg("--prefix") catch {};
+        host_cmd.appendArg(config.install_prefix[0..config.install_prefix_len]) catch {};
     }
 
     if (config.verbose) {
@@ -3238,8 +3556,8 @@ pub fn main(init: std.process.Init) !void {
 
     // Exit code 2: compile errors already reported by the compiler.
     if (host_exit == 2) {
-        std.process.exit(2);
+        sig_process.exit(2);
     }
 
-    std.process.exit(host_exit);
+    sig_process.exit(host_exit);
 }
