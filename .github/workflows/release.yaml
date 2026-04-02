@@ -100,9 +100,6 @@ jobs:
             --build-file build.zig \
             -Dtarget=${{ matrix.zig_target }} \
             -Doptimize=ReleaseSafe \
-            -Denable-llvm \
-            -Dstatic-llvm \
-            -Dstrip \
             -Dno-lib \
             -Dno-langref \
             --prefix "sig-${VERSION}-${{ matrix.target }}" \
