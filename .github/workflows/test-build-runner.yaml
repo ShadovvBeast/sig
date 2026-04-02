@@ -1,0 +1,38 @@
+# Test compiling main.sig with the 0.0.4 bootstrap to debug the integer overflow
+name: test-build-runner
+
+on:
+  workflow_dispatch:
+
+env:
+  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-0.0.4%2Bzig0.16.0.e079615/sig-0.0.4%2Bzig0.16.0.e079615-x86_64-linux.tar.xz
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download bootstrap
+        run: |
+          mkdir -p /tmp/bs
+          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bs.tar.xz
+          tar -xJf /tmp/bs.tar.xz -C /tmp/bs --strip-components=1
+          chmod +x /tmp/bs/bin/sig
+          /tmp/bs/bin/sig version
+
+      - name: Test compile main.sig directly
+        run: |
+          /tmp/bs/bin/sig build-exe \
+            --dep sig --dep std \
+            -Mroot=tools/sig_build/main.sig \
+            -Msig=lib/sig/sig.zig \
+            -Mstd=lib/std/std.zig \
+            --zig-lib-dir lib \
+            --cache-dir .zig-cache \
+            --global-cache-dir .zig-cache
+        timeout-minutes: 30
+
+      - name: Test sig build (sigBuildDelegate path)
+        run: |
+          /tmp/bs/bin/sig build --zig-lib-dir lib -Dno-lib -Dno-langref -Dno-bin
+        timeout-minutes: 30
