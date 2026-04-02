@@ -4983,7 +4983,9 @@ const SigBuildDelegateOptions = struct {
 // uses stack buffers and syscalls only. The build runner compilation is delegated
 // to a child `sig build-exe` process (which uses allocators internally, but that's
 // the compiler's own process, not ours).
-fn sigBuildDelegate(
+// [sig] noinline to prevent stack frame merging with cmdBuild (which is already huge).
+// Without this, the combined stack frame can exceed the default stack size.
+noinline fn sigBuildDelegate(
     io: Io,
     opts: SigBuildDelegateOptions,
 ) void {
@@ -5018,7 +5020,7 @@ fn sigBuildDelegate(
         opts.local_cache_dir, runner_bin_name,
     });
 
-    // 4. Construct -femit-bin=<path> flag and --mod flag values (stack buffers)
+    // 4. Construct -femit-bin=<path> flag and -M flag values (stack buffers)
     var emit_flag_buf: [path_buf_size + 16]u8 = undefined;
     const emit_flag = sigConcat(&emit_flag_buf, &.{ "-femit-bin=", runner_bin });
 
