@@ -5071,7 +5071,7 @@ noinline fn sigBuildDelegate(
     //    Layout: [runner_bin, self_exe, zig_lib, build_root, local_cache, global_cache, user_args...]
     const fixed_args = 6;
     const max_runner_argv = fixed_args + 256;
-    var runner_argv_buf: [max_runner_argv][]const u8 = undefined;
+    var runner_argv_buf: [max_runner_argv][]const u8 = .{&.{}} ** max_runner_argv;
     const total_args = fixed_args + opts.child_argv.len;
     if (total_args > max_runner_argv) {
         fatal("too many build arguments ({d}), maximum is {d}", .{ opts.child_argv.len, max_runner_argv - fixed_args });

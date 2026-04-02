@@ -27,8 +27,8 @@ pub const SigError = sig.SigError;
 // SigError.CapacityExceeded — no silent fallback, no allocator.
 pub const MAX_STEPS = 256;
 pub const MAX_DEPS_PER_STEP = 32;
-pub const MAX_MODULES = 128;
-pub const MAX_IMPORTS_PER_MODULE = 64;
+pub const MAX_MODULES = 32;
+pub const MAX_IMPORTS_PER_MODULE = 8;
 pub const MAX_OPTIONS = 128;
 pub const MAX_CACHE_ENTRIES = 1024;
 pub const MAX_THREADS = 64;
