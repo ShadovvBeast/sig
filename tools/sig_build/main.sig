@@ -2277,6 +2277,14 @@ pub const Build_Context = struct {
             }
 
             // Output binary: -femit-bin=<prefix>/bin/sig
+            // Create the output directory first (the compiler doesn't create parent dirs).
+            {
+                var bin_dir_buf: [PATH_BUF_SIZE]u8 = undefined;
+                const bin_dir_segs = [_][]const u8{ install_prefix, "bin" };
+                const bin_dir = sig_fs.joinPath(&bin_dir_buf, &bin_dir_segs) catch return error.BufferTooSmall;
+                const cwd: std.Io.Dir = .cwd();
+                cwd.createDirPath(io, bin_dir) catch {};
+            }
             {
                 var emit_buf: [PATH_BUF_SIZE]u8 = undefined;
                 const emit_prefix = "-femit-bin=";
@@ -2355,6 +2363,14 @@ pub const Build_Context = struct {
             });
 
             // Add -femit-bin=<prefix>/bin/<output_name> flag.
+            // Create the output directory first.
+            {
+                var bin_dir_buf: [PATH_BUF_SIZE]u8 = undefined;
+                const bin_dir_segs = [_][]const u8{ install_prefix, "bin" };
+                const bin_dir = sig_fs.joinPath(&bin_dir_buf, &bin_dir_segs) catch return error.BufferTooSmall;
+                const cwd: std.Io.Dir = .cwd();
+                cwd.createDirPath(io, bin_dir) catch {};
+            }
             {
                 var emit_buf: [PATH_BUF_SIZE]u8 = undefined;
                 const emit_prefix = "-femit-bin=";
