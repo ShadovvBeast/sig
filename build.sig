@@ -13,8 +13,8 @@ const std = @import("std"); // Only for std.SemanticVersion
 // sig_version struct is the source of truth; sig_version_string is derived.
 // Grep patterns: sig_version.*major = \K\d+, sig_version.*minor = \K\d+, etc.
 const zig_version: std.SemanticVersion = .{ .major = 0, .minor = 16, .patch = 0 };
-const sig_version = .{ .major = 0, .minor = 0, .patch = 4, .pre = "dev" };
-const sig_version_string = "0.0.4-dev";
+const sig_version = .{ .major = 0, .minor = 1, .patch = 0, .pre = "dev" };
+const sig_version_string = "0.1.0-dev";
 
 // ── Step function stubs ──────────────────────────────────────────────────
 // Placeholder step functions for steps whose execution logic will be wired
