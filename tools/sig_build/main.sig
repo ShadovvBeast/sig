@@ -493,24 +493,27 @@ pub const Target_Triple = struct {
         @memcpy(buf[offset..][0..self.os_len], self.os[0..self.os_len]);
         offset += self.os_len;
 
-        buf[offset] = '-';
-        offset += 1;
+        if (self.abi_len > 0) {
+            buf[offset] = '-';
+            offset += 1;
 
-        @memcpy(buf[offset..][0..self.abi_len], self.abi[0..self.abi_len]);
-        offset += self.abi_len;
+            @memcpy(buf[offset..][0..self.abi_len], self.abi[0..self.abi_len]);
+            offset += self.abi_len;
+        }
 
         return buf[0..offset];
     }
 
     /// Parse from "arch-os-abi" string.
+    /// Parse from "arch-os" or "arch-os-abi" string.
     pub fn parse(s: []const u8) SigError!Target_Triple {
         const first_dash = std.mem.indexOfScalar(u8, s, '-') orelse return error.BufferTooSmall;
         const rest = s[first_dash + 1 ..];
-        const second_dash = std.mem.indexOfScalar(u8, rest, '-') orelse return error.BufferTooSmall;
+        const second_dash = std.mem.indexOfScalar(u8, rest, '-');
 
         const arch = s[0..first_dash];
-        const os = rest[0..second_dash];
-        const abi = rest[second_dash + 1 ..];
+        const os = if (second_dash) |sd| rest[0..sd] else rest;
+        const abi = if (second_dash) |sd| rest[sd + 1 ..] else "";
 
         if (arch.len > 32) return error.BufferTooSmall;
         if (os.len > 32) return error.BufferTooSmall;
@@ -524,8 +527,10 @@ pub const Target_Triple = struct {
         @memcpy(triple.os[0..os.len], os);
         triple.os_len = os.len;
 
-        @memcpy(triple.abi[0..abi.len], abi);
-        triple.abi_len = abi.len;
+        if (abi.len > 0) {
+            @memcpy(triple.abi[0..abi.len], abi);
+            triple.abi_len = abi.len;
+        }
 
         return triple;
     }
