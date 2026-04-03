@@ -28,6 +28,13 @@ fn noopStep(ctx: *sig_build.Step_Context) sig_build.SigError!void {
 // ── Build entry point ────────────────────────────────────────────────────
 
 pub fn build(ctx: *sig_build.Build_Context) !void {
+    // ── Wire version constants to Build_Context ──────────────────────
+    ctx.zig_version_major = zig_version.major;
+    ctx.zig_version_minor = zig_version.minor;
+    ctx.zig_version_patch = zig_version.patch;
+    @memcpy(ctx.sig_version[0..sig_version_string.len], sig_version_string);
+    ctx.sig_version_len = sig_version_string.len;
+
     // ── Build options ────────────────────────────────────────────────
     // Option names preserved for CI grep compatibility.
     const skip_lib = ctx.option(bool, "no-lib", "Skip copying of lib/ files and langref to installation prefix") orelse false;

@@ -19,3 +19,4 @@ pub const zip = @import("zip.zig");
 pub const zon = @import("zon.zig");
 pub const uri = @import("uri.zig");
 pub const json = @import("json.zig");
+pub const process = @import("process.zig");

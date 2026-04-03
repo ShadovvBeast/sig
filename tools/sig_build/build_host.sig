@@ -18,6 +18,7 @@ const builtin = @import("builtin");
 
 const containers = sig.containers;
 const sig_fs = sig.fs;
+const sig_process = sig.process;
 
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
@@ -26,17 +27,14 @@ pub fn main(init: std.process.Init) !void {
     var runner_args: sig_build.Runner_Args = .{};
     var config: sig_build.Cli_Config = .{};
 
-    const use_allocator = @import("builtin").os.tag == .windows;
-    var args_it = if (use_allocator)
-        try init.minimal.args.iterateAllocator(init.gpa)
-    else
-        init.minimal.args.iterate();
-    defer if (use_allocator) args_it.deinit();
+    // Access raw argv via sig.process.Argv_Iterator — zero-allocator on all platforms.
+    var argv_buf: [4096]u8 = undefined;
+    var args_it = sig_process.Argv_Iterator.init(init.minimal.args.vector, &argv_buf);
 
     var arg_count: usize = 0;
 
     // argv[0]: host binary path
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > sig_build.PATH_BUF_SIZE) sig_build.fatal(io, "argv[0] path too long", .{});
         @memcpy(runner_args.runner_binary[0..arg.len], arg);
         runner_args.runner_binary_len = arg.len;
@@ -44,7 +42,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[1]: sig compiler path
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > sig_build.PATH_BUF_SIZE) sig_build.fatal(io, "argv[1] path too long", .{});
         @memcpy(runner_args.compiler_path[0..arg.len], arg);
         runner_args.compiler_path_len = arg.len;
@@ -52,7 +50,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[2]: zig lib directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > sig_build.PATH_BUF_SIZE) sig_build.fatal(io, "argv[2] path too long", .{});
         @memcpy(runner_args.zig_lib_dir[0..arg.len], arg);
         runner_args.zig_lib_dir_len = arg.len;
@@ -60,7 +58,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[3]: build root directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > sig_build.PATH_BUF_SIZE) sig_build.fatal(io, "argv[3] path too long", .{});
         @memcpy(runner_args.build_root[0..arg.len], arg);
         runner_args.build_root_len = arg.len;
@@ -68,7 +66,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[4]: local cache directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > sig_build.PATH_BUF_SIZE) sig_build.fatal(io, "argv[4] path too long", .{});
         @memcpy(runner_args.local_cache_dir[0..arg.len], arg);
         runner_args.local_cache_dir_len = arg.len;
@@ -76,7 +74,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[5]: global cache directory
-    if (args_it.next()) |arg| {
+    if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len > sig_build.PATH_BUF_SIZE) sig_build.fatal(io, "argv[5] path too long", .{});
         @memcpy(runner_args.global_cache_dir[0..arg.len], arg);
         runner_args.global_cache_dir_len = arg.len;
@@ -88,7 +86,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // argv[6..]: user arguments (step names, -D flags, -j, --verbose, etc.)
-    while (args_it.next()) |arg| {
+    while (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |arg| {
         if (arg.len >= 2 and arg[0] == '-' and arg[1] == 'D') {
             sig_build.parseOption(&config.options, arg) catch {
                 sig_build.fatal(io, "too many -D options", .{});
@@ -96,7 +94,7 @@ pub fn main(init: std.process.Init) !void {
         } else if (arg.len >= 2 and arg[0] == '-' and arg[1] == 'j') {
             if (sig_build.parseThreadCount(arg)) |count| {
                 config.thread_count = count;
-            } else if (args_it.next()) |next_arg| {
+            } else if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |next_arg| {
                 config.thread_count = std.fmt.parseInt(usize, next_arg, 10) catch {
                     sig_build.fatal(io, "invalid thread count: '{s}'", .{next_arg});
                 };
@@ -117,7 +115,7 @@ pub fn main(init: std.process.Init) !void {
                 config.self_test_compiler_len = value.len;
             }
         } else if (std.mem.eql(u8, arg, "--prefix")) {
-            if (args_it.next()) |value| {
+            if (args_it.next() catch sig_build.fatal(io, "argv decode error", .{})) |value| {
                 if (value.len > sig_build.PATH_BUF_SIZE) sig_build.fatal(io, "--prefix path too long", .{});
                 @memcpy(config.install_prefix[0..value.len], value);
                 config.install_prefix_len = value.len;
@@ -288,7 +286,7 @@ pub fn main(init: std.process.Init) !void {
 
     if (config.verify_identical) {
         if (!sig_build.verifyIdentical(io, build_root, &config)) {
-            std.process.exit(1);
+            sig_process.exit(1);
         }
     }
 
@@ -300,11 +298,11 @@ pub fn main(init: std.process.Init) !void {
             runner_args.compiler_path[0..runner_args.compiler_path_len];
 
         if (!sig_build.verifySelfHosting(io, self_path, compiler)) {
-            std.process.exit(1);
+            sig_process.exit(1);
         }
     }
 
     if (summary.failed > 0) {
-        std.process.exit(1);
+        sig_process.exit(1);
     }
 }
