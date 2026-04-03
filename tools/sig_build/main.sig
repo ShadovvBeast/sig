@@ -2305,6 +2305,7 @@ pub const Build_Context = struct {
             try cmd.appendArg(cache_dir);
 
             // Zig lib directory: --zig-lib-dir
+            printMsg(io, "compileStepFn: zig_lib_dir_len={d}", .{build_ctx.zig_lib_dir_len});
             if (build_ctx.zig_lib_dir_len > 0) {
                 try cmd.appendArg("--zig-lib-dir");
                 try cmd.appendArg(build_ctx.zig_lib_dir[0..build_ctx.zig_lib_dir_len]);
