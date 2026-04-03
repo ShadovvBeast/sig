@@ -2302,11 +2302,26 @@ pub const Build_Context = struct {
             // on Windows: -lntdll, -lws2_32, etc.) when LLVM support is enabled.
             // For now, LLVM linking is complex and will be refined in a follow-up.
 
+            // Log the command for debugging.
+            printMsg(io, "compileStepFn: compiling {s} with {d} args", .{ source_path, cmd.arg_count });
+            for (0..cmd.arg_count) |ci| {
+                printMsg(io, "  arg[{d}]: {s}", .{ ci, cmd.getArg(ci) });
+            }
+
             // Execute the command and propagate errors.
             var stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined;
             var stderr_len: usize = 0;
             const exit_code = try runCommand(&cmd, &stderr_buf, &stderr_len, io);
-            if (exit_code != 0) return error.BufferTooSmall;
+            if (exit_code != 0) {
+                // Print stderr so CI logs show the actual error.
+                if (stderr_len > 0) {
+                    printMsg(io, "compileStepFn: compiler build-exe failed with code {d}:", .{exit_code});
+                    printMsg(io, "{s}", .{stderr_buf[0..stderr_len]});
+                } else {
+                    printMsg(io, "compileStepFn: compiler build-exe failed with code {d} (no stderr)", .{exit_code});
+                }
+                return error.BufferTooSmall;
+            }
         } else {
             // Direct build-exe invocation for non-compiler sources.
             var cmd: Command_Buffer = .{};
@@ -2358,7 +2373,15 @@ pub const Build_Context = struct {
             var stderr_buf: [STDERR_CAPTURE_SIZE]u8 = undefined;
             var stderr_len: usize = 0;
             const exit_code = try runCommand(&cmd, &stderr_buf, &stderr_len, io);
-            if (exit_code != 0) return error.BufferTooSmall;
+            if (exit_code != 0) {
+                if (stderr_len > 0) {
+                    printMsg(io, "compileStepFn: build-exe failed with code {d}:", .{exit_code});
+                    printMsg(io, "{s}", .{stderr_buf[0..stderr_len]});
+                } else {
+                    printMsg(io, "compileStepFn: build-exe failed with code {d} (no stderr)", .{exit_code});
+                }
+                return error.BufferTooSmall;
+            }
         }
     }
 
