@@ -2221,6 +2221,12 @@ pub const Build_Context = struct {
             // Sub-command.
             try cmd.appendArg("build-exe");
 
+            // Zig lib directory: must come before module args.
+            if (build_ctx.zig_lib_dir_len > 0) {
+                try cmd.appendArg("--zig-lib-dir");
+                try cmd.appendArg(build_ctx.zig_lib_dir[0..build_ctx.zig_lib_dir_len]);
+            }
+
             // Module dependencies: --dep flags before root module.
             try cmd.appendArg("--dep");
             try cmd.appendArg("build_options");
@@ -2309,12 +2315,7 @@ pub const Build_Context = struct {
             try cmd.appendArg("--cache-dir");
             try cmd.appendArg(cache_dir);
 
-            // Zig lib directory: --zig-lib-dir
-            printMsg(io, "compileStepFn: zig_lib_dir_len={d}", .{build_ctx.zig_lib_dir_len});
-            if (build_ctx.zig_lib_dir_len > 0) {
-                try cmd.appendArg("--zig-lib-dir");
-                try cmd.appendArg(build_ctx.zig_lib_dir[0..build_ctx.zig_lib_dir_len]);
-            }
+            // (zig-lib-dir is already passed above, before module args)
 
             // LLVM linking flags: when have_llvm is true, forward static LLVM
             // library flags and platform-specific system libraries.
