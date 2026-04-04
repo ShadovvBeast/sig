@@ -32,15 +32,29 @@ jobs:
           key: zig-cache-bootstrap-linux-${{ github.sha }}
           restore-keys: zig-cache-bootstrap-linux-
 
-      - name: Download bootstrap sig (x86_64-linux)
+      - name: Download bootstrap sig (x86_64-linux, latest release)
         run: |
+          DOWNLOAD_URL=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases" \
+            | python3 -c "
+          import sys, json
+          for r in json.load(sys.stdin):
+            if isinstance(r, dict):
+              for a in r.get('assets', []):
+                n = a['name']
+                if 'x86_64-linux' in n and n.endswith('.tar.xz') and 'bootstrap' not in n:
+                  print(a['browser_download_url'])
+                  exit(0)
+          exit(1)
+          ")
+          echo "Bootstrap: $DOWNLOAD_URL"
           mkdir -p /tmp/bootstrap-sig
-          curl -fsSL "https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz" \
-            -o /tmp/bootstrap-sig.tar
-          tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
-          chmod +x /tmp/bootstrap-sig/bin/sig
-          echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
-          /tmp/bootstrap-sig/bin/sig version
+          curl -fsSL "$DOWNLOAD_URL" -o /tmp/bootstrap-sig.tar.xz
+          tar -xJf /tmp/bootstrap-sig.tar.xz -C /tmp/bootstrap-sig
+          SIG=$(find /tmp/bootstrap-sig -name "sig" -not -type d | head -1)
+          chmod +x "$SIG"
+          "$SIG" version
+          echo "$SIG" >> "$GITHUB_PATH"
+          ln -sf "$SIG" /usr/local/bin/sig
           echo "ZIG_LIB_DIR=$(pwd)/lib" >> "$GITHUB_ENV"
 
       - name: Generate build_options.zig
@@ -79,7 +93,8 @@ jobs:
       - name: Build x86_64-linux
         run: |
           mkdir -p bootstrap-sig-x86_64-linux/bin
-          sig build-exe \
+          SIG=$(find /tmp/bootstrap-sig -name "sig" -not -type d | head -1)
+          "$SIG" build-exe \
             --dep build_options \
             --dep aro \
             -Mroot=src/main.zig \
