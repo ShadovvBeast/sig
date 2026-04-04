@@ -25,7 +25,7 @@ permissions:
 
 env:
   # LLVM_URL: https://github.com/SB0LTD/sig/releases/download/llvm-21/llvm-21-x86_64-linux.tar.xz
-  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-0.0.4%2Bzig0.16.0.4174eca/sig-0.0.4%2Bzig0.16.0.4174eca-x86_64-linux.tar.xz
+  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-0.0.4%2Bzig0.16.0.b86c5e8/sig-0.0.4%2Bzig0.16.0.b86c5e8-x86_64-linux.tar.xz
 
 jobs:
   build:
