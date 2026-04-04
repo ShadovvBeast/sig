@@ -164,8 +164,10 @@ jobs:
         continue-on-error: true
 
       - name: Install lib files
-        run: sig build --zig-lib-dir lib -Dlib-files-only --prefix "sig-${VERSION}-${{ matrix.target }}" --maxrss 0 || true
-        timeout-minutes: 10
+        run: |
+          mkdir -p "sig-${VERSION}-${{ matrix.target }}/lib/zig"
+          cp -r lib/. "sig-${VERSION}-${{ matrix.target }}/lib/zig/"
+        timeout-minutes: 5
         continue-on-error: true
 
       - name: Package tarball

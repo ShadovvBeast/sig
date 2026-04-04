@@ -40,11 +40,6 @@ jobs:
             -Dskip-tests \
             --prefix bootstrap-sig-x86_64-linux \
             --maxrss 0
-          sig build \
-            --zig-lib-dir lib \
-            -Dlib-files-only \
-            --prefix bootstrap-sig-x86_64-linux \
-            --maxrss 0
         timeout-minutes: 120
 
       - name: Build aarch64-macos bootstrap (cross from Linux)
@@ -57,23 +52,14 @@ jobs:
             -Dskip-tests \
             --prefix bootstrap-sig-aarch64-macos \
             --maxrss 0
-          sig build \
-            --zig-lib-dir lib \
-            -Dlib-files-only \
-            --prefix bootstrap-sig-aarch64-macos \
-            --maxrss 0
         timeout-minutes: 120
 
       - name: Verify and package
         run: |
           echo "=== x86_64-linux ==="
           file bootstrap-sig-x86_64-linux/bin/sig
-          ls -la bootstrap-sig-x86_64-linux/bin/
-          ls bootstrap-sig-x86_64-linux/ || true
           echo "=== aarch64-macos ==="
           file bootstrap-sig-aarch64-macos/bin/sig
-          ls -la bootstrap-sig-aarch64-macos/bin/
-          ls bootstrap-sig-aarch64-macos/ || true
           tar -czf bootstrap-sig-x86_64-linux.tar.gz -C bootstrap-sig-x86_64-linux .
           tar -czf bootstrap-sig-aarch64-macos.tar.gz -C bootstrap-sig-aarch64-macos .
 
