@@ -87,8 +87,10 @@ jobs:
           mkdir -p bootstrap-sig-x86_64-linux/bin
           sig build-exe \
             --dep build_options \
+            --dep aro \
             -Mroot=src/main.zig \
             -Mbuild_options=.zig-cache/build_options.zig \
+            -Maro=lib/compiler/aro/aro.zig \
             --zig-lib-dir "$ZIG_LIB_DIR" \
             --cache-dir .zig-cache \
             --global-cache-dir .zig-cache \
@@ -183,8 +185,10 @@ jobs:
           mkdir -p bootstrap-sig-aarch64-macos/bin
           "$SIG_BIN" build-exe \
             --dep build_options \
+            --dep aro \
             -Mroot=src/main.zig \
             -Mbuild_options=.zig-cache/build_options.zig \
+            -Maro=lib/compiler/aro/aro.zig \
             --zig-lib-dir "$ZIG_LIB_DIR" \
             --cache-dir .zig-cache \
             --global-cache-dir .zig-cache \
