@@ -1,11 +1,11 @@
-# Test compiling main.sig with the 0.0.4 bootstrap to debug the integer overflow
+# Test compiling main.sig with the current bootstrap release
 name: test-build-runner
 
 on:
   workflow_dispatch:
 
 env:
-  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-0.0.4%2Bzig0.16.0.e079615/sig-0.0.4%2Bzig0.16.0.e079615-x86_64-linux.tar.xz
+  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/sig-0.1.0-dev%2Bzig0.16.0.afaa4cd/sig-0.1.0-dev%2Bzig0.16.0.afaa4cd-x86_64-linux.tar.xz
 
 jobs:
   test:
