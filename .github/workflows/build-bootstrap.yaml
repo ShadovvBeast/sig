@@ -1,0 +1,71 @@
+# Build and publish a fresh Linux x86_64 bootstrap compiler release.
+name: build-bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v1/bootstrap-sig-x86_64-linux.tar.gz
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve bootstrap version
+        run: |
+          VERSION="bootstrap-sig-v2"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Download bootstrap compiler
+        run: |
+          mkdir -p /tmp/bootstrap-sig
+          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap-sig.tar
+          tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
+          chmod +x /tmp/bootstrap-sig/bin/sig
+          echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
+          /tmp/bootstrap-sig/bin/sig version
+
+      - name: Build fresh bootstrap from current source
+        run: |
+          sig build \
+            --build-file build.zig \
+            --zig-lib-dir lib \
+            -Dtarget=x86_64-linux-musl \
+            -Doptimize=ReleaseSafe \
+            -Dno-langref \
+            --prefix bootstrap-sig-x86_64-linux \
+            --maxrss 0
+          sig build \
+            --build-file build.zig \
+            --zig-lib-dir lib \
+            -Dlib-files-only \
+            --prefix bootstrap-sig-x86_64-linux \
+            --maxrss 0
+        timeout-minutes: 120
+
+      - name: Verify bootstrap binary
+        run: |
+          test -f bootstrap-sig-x86_64-linux/bin/sig
+          file bootstrap-sig-x86_64-linux/bin/sig
+
+      - name: Package bootstrap archive
+        run: |
+          tar -czf bootstrap-sig-x86_64-linux.tar.gz -C bootstrap-sig-x86_64-linux .
+
+      - name: Publish bootstrap release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${VERSION}" >/dev/null 2>&1 || \
+            gh release create "${VERSION}" \
+              --title "Bootstrap Sig Compiler v2" \
+              --notes "Fresh Linux x86_64 bootstrap compiler built from current master using build.zig." \
+              --prerelease
+          gh release upload "${VERSION}" bootstrap-sig-x86_64-linux.tar.gz --clobber
