@@ -121,7 +121,7 @@ jobs:
             zig_target: aarch64-macos
             ext: tar.xz
           - target: x86_64-windows
-            zig_target: x86_64-windows
+            zig_target: x86_64-windows-gnu
             ext: zip
     runs-on: ubuntu-latest
     env:
