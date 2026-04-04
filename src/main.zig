@@ -5106,8 +5106,7 @@ noinline fn sigBuildDelegate(
                 mem.eql(u8, arg, "--debug-log") or
                 mem.eql(u8, arg, "--debug-target") or
                 mem.eql(u8, arg, "--debug-libc") or
-                mem.eql(u8, arg, "--maxrss") or
-                mem.eql(u8, arg, "--prefix"))
+                mem.eql(u8, arg, "--maxrss"))
             {
                 if (i + 1 < opts.child_argv.len) i += 1; // skip the flag AND its value
                 continue;
@@ -5127,7 +5126,6 @@ noinline fn sigBuildDelegate(
                 mem.startsWith(u8, arg, "--fork=") or
                 mem.startsWith(u8, arg, "--fetch=") or
                 mem.startsWith(u8, arg, "--seed=") or
-                mem.startsWith(u8, arg, "--prefix=") or
                 mem.startsWith(u8, arg, "--verbose-llvm-ir=") or
                 mem.startsWith(u8, arg, "--verbose-llvm-bc=") or
                 mem.startsWith(u8, arg, "-freference-trace") or
