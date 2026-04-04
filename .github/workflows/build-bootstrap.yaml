@@ -20,8 +20,6 @@ env:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-    env:
-      BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,10 +32,11 @@ jobs:
           key: zig-cache-bootstrap-linux-${{ github.sha }}
           restore-keys: zig-cache-bootstrap-linux-
 
-      - name: Download bootstrap sig
+      - name: Download bootstrap sig (x86_64-linux)
         run: |
           mkdir -p /tmp/bootstrap-sig
-          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap-sig.tar
+          curl -fsSL "https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz" \
+            -o /tmp/bootstrap-sig.tar
           tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
           chmod +x /tmp/bootstrap-sig/bin/sig
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
@@ -49,38 +48,33 @@ jobs:
           mkdir -p .zig-cache
           SIG_VER=$(grep -oE 'sig_version_string = "[^"]+"' build.sig | grep -oE '"[^"]+"' | tr -d '"')
           GIT_SHORT=$(git rev-parse --short=7 HEAD)
-          cat > .zig-cache/build_options.zig << 'ZIGEOF'
-          pub const mem_leak_frames: u32 = 0;
-          pub const skip_non_native: bool = false;
-          pub const have_llvm: bool = false;
-          pub const llvm_has_m68k: bool = false;
-          pub const llvm_has_csky: bool = false;
-          pub const llvm_has_arc: bool = false;
-          pub const llvm_has_xtensa: bool = false;
-          pub const debug_gpa: bool = false;
-          pub const enable_debug_extensions: bool = false;
-          pub const enable_logging: bool = false;
-          pub const enable_link_snapshots: bool = false;
-          pub const enable_tracy: bool = false;
-          pub const enable_tracy_callstack: bool = false;
-          pub const enable_tracy_allocation: bool = false;
-          pub const tracy_callstack_depth: u32 = 10;
-          pub const value_tracing: bool = false;
-          pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };
-          pub const dev: @"src.dev.Env" = .full;
-          pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };
-          pub const io_mode: @"build.IoMode" = .threaded;
-          pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };
-          pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;
-          ZIGEOF
-          # Patch in dynamic values
-          sed -i "s|__VERSION__|${SIG_VER}+zig0.16.0.${GIT_SHORT}|g" .zig-cache/build_options.zig
-          sed -i "s|__SIG_VER__|${SIG_VER}|g" .zig-cache/build_options.zig
-          # Add version lines (sed can't easily add new lines, append them)
+          cat > .zig-cache/build_options.zig <<'ZIGEOF'
+pub const mem_leak_frames: u32 = 0;
+pub const skip_non_native: bool = false;
+pub const have_llvm: bool = false;
+pub const llvm_has_m68k: bool = false;
+pub const llvm_has_csky: bool = false;
+pub const llvm_has_arc: bool = false;
+pub const llvm_has_xtensa: bool = false;
+pub const debug_gpa: bool = false;
+pub const enable_debug_extensions: bool = false;
+pub const enable_logging: bool = false;
+pub const enable_link_snapshots: bool = false;
+pub const enable_tracy: bool = false;
+pub const enable_tracy_callstack: bool = false;
+pub const enable_tracy_allocation: bool = false;
+pub const tracy_callstack_depth: u32 = 10;
+pub const value_tracing: bool = false;
+pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };
+pub const dev: @"src.dev.Env" = .full;
+pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };
+pub const io_mode: @"build.IoMode" = .threaded;
+pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };
+pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;
+ZIGEOF
           echo "pub const version: [:0]const u8 = \"${SIG_VER}+zig0.16.0.${GIT_SHORT}\";" >> .zig-cache/build_options.zig
           echo "pub const sig_version: [:0]const u8 = \"${SIG_VER}\";" >> .zig-cache/build_options.zig
-          echo "pub const semver: @import(\"std\").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = \"dev\", .build = \"\" };" >> .zig-cache/build_options.zig
-          cat .zig-cache/build_options.zig
+          echo 'pub const semver: @import("std").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = "dev", .build = "" };' >> .zig-cache/build_options.zig
 
       - name: Build x86_64-linux
         run: |
@@ -102,9 +96,10 @@ jobs:
       - name: Verify and package
         run: |
           file bootstrap-sig-x86_64-linux/bin/sig
+          bootstrap-sig-x86_64-linux/bin/sig version
           tar -czf bootstrap-sig-x86_64-linux.tar.gz -C bootstrap-sig-x86_64-linux .
 
-      - name: Create release if needed
+      - name: Publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -113,17 +108,10 @@ jobs:
               --title "Bootstrap Sig Compiler ${VERSION}" \
               --notes "Bootstrap compiler binaries — sig builds sig, no zig required." \
               --prerelease
-
-      - name: Upload x86_64-linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${VERSION}" bootstrap-sig-x86_64-linux.tar.gz --clobber
+          gh release upload "${VERSION}" bootstrap-sig-x86_64-linux.tar.gz --clobber
 
   build-macos:
     runs-on: macos-14
-    env:
-      # Real arm64 Mach-O bootstrap — uploaded from local Mac
-      BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-aarch64-macos.tar.gz
     steps:
       - uses: actions/checkout@v4
         with:
@@ -136,14 +124,33 @@ jobs:
           key: zig-cache-bootstrap-macos-${{ github.sha }}
           restore-keys: zig-cache-bootstrap-macos-
 
-      - name: Download bootstrap sig
+      - name: Download bootstrap sig (aarch64-macos from latest release)
         run: |
+          # Find the most recent aarch64-macos release binary
+          DOWNLOAD_URL=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases" \
+            | python3 -c "
+          import sys, json
+          for r in json.load(sys.stdin):
+            for a in r.get('assets', []):
+              n = a['name']
+              if 'aarch64-macos' in n and (n.endswith('.tar.xz') or n.endswith('.tar.gz')):
+                print(a['browser_download_url'])
+                exit(0)
+          exit(1)
+          ")
+          echo "Using bootstrap: $DOWNLOAD_URL"
           mkdir -p /tmp/bootstrap-sig
-          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap-sig.tar
-          tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
-          chmod +x /tmp/bootstrap-sig/bin/sig
-          /tmp/bootstrap-sig/bin/sig version
-          echo "SIG_BIN=/tmp/bootstrap-sig/bin/sig" >> "$GITHUB_ENV"
+          curl -fsSL "$DOWNLOAD_URL" -o /tmp/bootstrap-sig.tar
+          # Handle both .tar.xz and .tar.gz
+          if echo "$DOWNLOAD_URL" | grep -q '\.tar\.xz'; then
+            tar -xJf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
+          else
+            tar -xzf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
+          fi
+          SIG=$(find /tmp/bootstrap-sig -name "sig" -not -type d | head -1)
+          chmod +x "$SIG"
+          "$SIG" version
+          echo "SIG_BIN=$SIG" >> "$GITHUB_ENV"
           echo "ZIG_LIB_DIR=$(pwd)/lib" >> "$GITHUB_ENV"
 
       - name: Generate build_options.zig
@@ -151,34 +158,33 @@ jobs:
           mkdir -p .zig-cache
           SIG_VER=$(grep -oE 'sig_version_string = "[^"]+"' build.sig | grep -oE '"[^"]+"' | tr -d '"')
           GIT_SHORT=$(git rev-parse --short=7 HEAD)
-          cat > .zig-cache/build_options.zig << 'ZIGEOF'
-          pub const mem_leak_frames: u32 = 0;
-          pub const skip_non_native: bool = false;
-          pub const have_llvm: bool = false;
-          pub const llvm_has_m68k: bool = false;
-          pub const llvm_has_csky: bool = false;
-          pub const llvm_has_arc: bool = false;
-          pub const llvm_has_xtensa: bool = false;
-          pub const debug_gpa: bool = false;
-          pub const enable_debug_extensions: bool = false;
-          pub const enable_logging: bool = false;
-          pub const enable_link_snapshots: bool = false;
-          pub const enable_tracy: bool = false;
-          pub const enable_tracy_callstack: bool = false;
-          pub const enable_tracy_allocation: bool = false;
-          pub const tracy_callstack_depth: u32 = 10;
-          pub const value_tracing: bool = false;
-          pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };
-          pub const dev: @"src.dev.Env" = .full;
-          pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };
-          pub const io_mode: @"build.IoMode" = .threaded;
-          pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };
-          pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;
-          ZIGEOF
+          cat > .zig-cache/build_options.zig <<'ZIGEOF'
+pub const mem_leak_frames: u32 = 0;
+pub const skip_non_native: bool = false;
+pub const have_llvm: bool = false;
+pub const llvm_has_m68k: bool = false;
+pub const llvm_has_csky: bool = false;
+pub const llvm_has_arc: bool = false;
+pub const llvm_has_xtensa: bool = false;
+pub const debug_gpa: bool = false;
+pub const enable_debug_extensions: bool = false;
+pub const enable_logging: bool = false;
+pub const enable_link_snapshots: bool = false;
+pub const enable_tracy: bool = false;
+pub const enable_tracy_callstack: bool = false;
+pub const enable_tracy_allocation: bool = false;
+pub const tracy_callstack_depth: u32 = 10;
+pub const value_tracing: bool = false;
+pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };
+pub const dev: @"src.dev.Env" = .full;
+pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };
+pub const io_mode: @"build.IoMode" = .threaded;
+pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };
+pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;
+ZIGEOF
           echo "pub const version: [:0]const u8 = \"${SIG_VER}+zig0.16.0.${GIT_SHORT}\";" >> .zig-cache/build_options.zig
           echo "pub const sig_version: [:0]const u8 = \"${SIG_VER}\";" >> .zig-cache/build_options.zig
-          echo "pub const semver: @import(\"std\").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = \"dev\", .build = \"\" };" >> .zig-cache/build_options.zig
-          cat .zig-cache/build_options.zig
+          echo 'pub const semver: @import("std").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = "dev", .build = "" };' >> .zig-cache/build_options.zig
 
       - name: Build aarch64-macos
         run: |
@@ -203,7 +209,7 @@ jobs:
           bootstrap-sig-aarch64-macos/bin/sig version
           tar -czf bootstrap-sig-aarch64-macos.tar.gz -C bootstrap-sig-aarch64-macos .
 
-      - name: Create release if needed
+      - name: Publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -212,8 +218,4 @@ jobs:
               --title "Bootstrap Sig Compiler ${VERSION}" \
               --notes "Bootstrap compiler binaries — sig builds sig, no zig required." \
               --prerelease
-
-      - name: Upload aarch64-macos
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${VERSION}" bootstrap-sig-aarch64-macos.tar.gz --clobber
+          gh release upload "${VERSION}" bootstrap-sig-aarch64-macos.tar.gz --clobber
