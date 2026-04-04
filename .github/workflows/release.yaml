@@ -110,6 +110,7 @@ jobs:
           chmod +x /tmp/bootstrap-sig/bin/sig
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
           /tmp/bootstrap-sig/bin/sig version
+          echo "REPO_LIB_DIR=$(pwd)/lib" >> "$GITHUB_ENV"
 
       # ============================================================
       # Slow path: cmake bootstrap from LLVM
@@ -149,7 +150,7 @@ jobs:
       - name: Build sig for ${{ matrix.target }}
         run: |
           sig build \
-            --zig-lib-dir lib \
+            --zig-lib-dir "$REPO_LIB_DIR" \
             -Dtarget=${{ matrix.zig_target }} \
             -Doptimize=ReleaseSafe \
             -Dno-lib \
