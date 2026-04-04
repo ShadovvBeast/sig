@@ -1,4 +1,4 @@
-# Build and publish a fresh Linux x86_64 bootstrap compiler release.
+# Build and publish fresh bootstrap compiler binaries for all platforms.
 name: build-bootstrap
 
 on:
@@ -7,57 +7,122 @@ on:
 permissions:
   contents: write
 
-env:
-  BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v1/bootstrap-sig-x86_64-linux.tar.gz
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            zig_target: x86_64-linux-musl
+            artifact: bootstrap-sig-x86_64-linux
+            bootstrap_url: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz
+          - runner: macos-latest
+            zig_target: aarch64-macos
+            artifact: bootstrap-sig-aarch64-macos
+            bootstrap_url: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz
+    runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: bootstrap-sig-v2
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Resolve bootstrap version
-        run: |
-          VERSION="bootstrap-sig-v2"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-
-      - name: Download bootstrap compiler
+      - name: Download bootstrap compiler (Linux)
+        if: runner.os == 'Linux'
         run: |
           mkdir -p /tmp/bootstrap-sig
-          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap-sig.tar
+          curl -fsSL "${{ matrix.bootstrap_url }}" -o /tmp/bootstrap-sig.tar
           tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
           chmod +x /tmp/bootstrap-sig/bin/sig
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
           /tmp/bootstrap-sig/bin/sig version
 
+      - name: Download bootstrap compiler (macOS — use existing release if available)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p /tmp/bootstrap-sig
+          # Try to download existing aarch64-macos bootstrap first
+          if curl -fsSL "https://github.com/SB0LTD/sig/releases/download/${VERSION}/bootstrap-sig-aarch64-macos.tar.gz" \
+              -o /tmp/bootstrap-sig.tar 2>/dev/null; then
+            tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
+            chmod +x /tmp/bootstrap-sig/bin/sig
+            echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
+            /tmp/bootstrap-sig/bin/sig version
+          else
+            # Fall back: cross-compile from Linux bootstrap via brew zig
+            brew install zig || true
+            ZIG=$(which zig)
+            echo "Using system zig: $($ZIG version)"
+            # Build sig using zig directly
+            $ZIG build \
+              --build-file build.zig \
+              --zig-lib-dir lib \
+              -Dtarget=aarch64-macos \
+              -Doptimize=ReleaseSafe \
+              -Dno-langref \
+              --prefix "${{ matrix.artifact }}" \
+              --maxrss 0
+            $ZIG build \
+              --build-file build.zig \
+              --zig-lib-dir lib \
+              -Dlib-files-only \
+              --prefix "${{ matrix.artifact }}" \
+              --maxrss 0
+            test -f "${{ matrix.artifact }}/bin/sig"
+            file "${{ matrix.artifact }}/bin/sig"
+            tar -czf "${{ matrix.artifact }}.tar.gz" -C "${{ matrix.artifact }}" .
+            gh release view "${VERSION}" >/dev/null 2>&1 || \
+              gh release create "${VERSION}" \
+                --title "Bootstrap Sig Compiler v2" \
+                --notes "Bootstrap compiler binaries built from current master." \
+                --prerelease
+            gh release upload "${VERSION}" "${{ matrix.artifact }}.tar.gz" --clobber
+            exit 0
+          fi
+
       - name: Build fresh bootstrap from current source
+        if: runner.os == 'Linux'
         run: |
           sig build \
-            --build-file build.zig \
             --zig-lib-dir lib \
-            -Dtarget=x86_64-linux-musl \
+            -Dtarget=${{ matrix.zig_target }} \
             -Doptimize=ReleaseSafe \
             -Dno-langref \
-            --prefix bootstrap-sig-x86_64-linux \
+            -Dskip-tests \
+            --prefix "${{ matrix.artifact }}" \
             --maxrss 0
           sig build \
-            --build-file build.zig \
             --zig-lib-dir lib \
             -Dlib-files-only \
-            --prefix bootstrap-sig-x86_64-linux \
+            --prefix "${{ matrix.artifact }}" \
             --maxrss 0
         timeout-minutes: 120
 
-      - name: Verify bootstrap binary
+      - name: Build fresh bootstrap from current source (macOS)
+        if: runner.os == 'macOS'
         run: |
-          test -f bootstrap-sig-x86_64-linux/bin/sig
-          file bootstrap-sig-x86_64-linux/bin/sig
+          sig build \
+            --zig-lib-dir lib \
+            -Dtarget=${{ matrix.zig_target }} \
+            -Doptimize=ReleaseSafe \
+            -Dno-langref \
+            -Dskip-tests \
+            --prefix "${{ matrix.artifact }}" \
+            --maxrss 0
+          sig build \
+            --zig-lib-dir lib \
+            -Dlib-files-only \
+            --prefix "${{ matrix.artifact }}" \
+            --maxrss 0
+        timeout-minutes: 120
 
-      - name: Package bootstrap archive
+      - name: Verify and package
         run: |
-          tar -czf bootstrap-sig-x86_64-linux.tar.gz -C bootstrap-sig-x86_64-linux .
+          test -f "${{ matrix.artifact }}/bin/sig"
+          file "${{ matrix.artifact }}/bin/sig"
+          tar -czf "${{ matrix.artifact }}.tar.gz" -C "${{ matrix.artifact }}" .
 
       - name: Publish bootstrap release
         env:
@@ -66,6 +131,6 @@ jobs:
           gh release view "${VERSION}" >/dev/null 2>&1 || \
             gh release create "${VERSION}" \
               --title "Bootstrap Sig Compiler v2" \
-              --notes "Fresh Linux x86_64 bootstrap compiler built from current master using build.zig." \
+              --notes "Bootstrap compiler binaries built from current master." \
               --prerelease
-          gh release upload "${VERSION}" bootstrap-sig-x86_64-linux.tar.gz --clobber
+          gh release upload "${VERSION}" "${{ matrix.artifact }}.tar.gz" --clobber

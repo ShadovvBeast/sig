@@ -36,16 +36,24 @@ jobs:
           - target: x86_64-linux
             zig_target: x86_64-linux-musl
             ext: tar.xz
+            runner: ubuntu-latest
+            bootstrap_url: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz
           - target: aarch64-linux
             zig_target: aarch64-linux-musl
             ext: tar.xz
+            runner: ubuntu-latest
+            bootstrap_url: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz
           - target: aarch64-macos
             zig_target: aarch64-macos
             ext: tar.xz
+            runner: macos-latest
+            bootstrap_url: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-aarch64-macos.tar.gz
           - target: x86_64-windows
             zig_target: x86_64-windows
             ext: zip
-    runs-on: ubuntu-latest
+            runner: ubuntu-latest
+            bootstrap_url: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz
+    runs-on: ${{ matrix.runner }}
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -97,7 +105,7 @@ jobs:
         if: env.MODE == 'bootstrap'
         run: |
           mkdir -p /tmp/bootstrap-sig
-          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap-sig.tar
+          curl -fsSL "${{ matrix.bootstrap_url }}" -o /tmp/bootstrap-sig.tar
           tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
           chmod +x /tmp/bootstrap-sig/bin/sig
           echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
