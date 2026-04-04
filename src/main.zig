@@ -5076,13 +5076,20 @@ noinline fn sigBuildDelegate(
     //    --system, --debug-*, --verbose-*, -freference-trace, --maxrss, --prefix.
     const fixed_args = 6;
     const max_runner_argv = fixed_args + 256;
-    var runner_argv = std.BoundedArray([]const u8, max_runner_argv){};
-    runner_argv.appendAssumeCapacity(runner_bin);
-    runner_argv.appendAssumeCapacity(opts.self_exe_path);
-    runner_argv.appendAssumeCapacity(opts.zig_lib_dir);
-    runner_argv.appendAssumeCapacity(opts.build_root_path);
-    runner_argv.appendAssumeCapacity(opts.local_cache_dir);
-    runner_argv.appendAssumeCapacity(opts.global_cache_dir);
+    var runner_argv_buf: [max_runner_argv][]const u8 = undefined;
+    var runner_argv_len: usize = 0;
+    runner_argv_buf[runner_argv_len] = runner_bin;
+    runner_argv_len += 1;
+    runner_argv_buf[runner_argv_len] = opts.self_exe_path;
+    runner_argv_len += 1;
+    runner_argv_buf[runner_argv_len] = opts.zig_lib_dir;
+    runner_argv_len += 1;
+    runner_argv_buf[runner_argv_len] = opts.build_root_path;
+    runner_argv_len += 1;
+    runner_argv_buf[runner_argv_len] = opts.local_cache_dir;
+    runner_argv_len += 1;
+    runner_argv_buf[runner_argv_len] = opts.global_cache_dir;
+    runner_argv_len += 1;
     {
         var i: usize = 0;
         while (i < opts.child_argv.len) : (i += 1) {
@@ -5130,18 +5137,21 @@ noinline fn sigBuildDelegate(
             }
             // -j is handled: convert to sig runner format
             if (mem.startsWith(u8, arg, "-j")) {
-                if (runner_argv.len >= max_runner_argv) break;
-                runner_argv.appendAssumeCapacity(arg);
+                if (runner_argv_len >= max_runner_argv) break;
+                runner_argv_buf[runner_argv_len] = arg;
+                runner_argv_len += 1;
                 continue;
             }
             // Pass through: step names, -D flags, --verbose, --benchmark, --verify-identical, --self-test, --
-            if (runner_argv.len >= max_runner_argv) break;
-            runner_argv.appendAssumeCapacity(arg);
+            if (runner_argv_len >= max_runner_argv) break;
+            runner_argv_buf[runner_argv_len] = arg;
+            runner_argv_len += 1;
         }
     }
+    const runner_argv = runner_argv_buf[0..runner_argv_len];
 
     // 7. Spawn runner and propagate exit code
-    switch (sigSpawnAndWait(io, runner_argv.constSlice())) {
+    switch (sigSpawnAndWait(io, runner_argv)) {
         .exited => |code| {
             if (code == 0) return;
             if (code == 2) process.exit(2); // Compile errors already reported
