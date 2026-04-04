@@ -143,7 +143,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="/tmp/llvm-21" \
             -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap-sig" \
             -DZIG_USE_LLVM_CONFIG=ON
-          ninja install -j$(nproc)
+          ninja install -j$(getconf _NPROCESSORS_ONLN)
           cd ..
           mv build.sig.bak build.sig
           chmod +x bootstrap-sig/bin/sig
@@ -164,7 +164,7 @@ jobs:
             -Dno-langref \
             -Dskip-tests \
             --prefix "sig-${VERSION}-${{ matrix.target }}" \
-            -j$(nproc)
+            -j$(getconf _NPROCESSORS_ONLN)
           # List what was produced
           echo "=== Output directory contents ==="
           find "sig-${VERSION}-${{ matrix.target }}" -type f 2>/dev/null || echo "(directory not found)"
@@ -186,8 +186,8 @@ jobs:
               ls -la "$BIN_DIR" 2>/dev/null || echo "(bin dir missing)"
               exit 1
             fi
-            # Verify it's a PE executable (starts with MZ)
-            MAGIC=$(xxd -l 2 -p "$BIN_FILE")
+            # Verify it's a PE executable (starts with MZ = 4d5a)
+            MAGIC=$(od -A n -t x1 -N 2 "$BIN_FILE" | tr -d ' ')
             if [ "$MAGIC" != "4d5a" ]; then
               echo "ERROR: sig.exe is not a PE executable (magic: $MAGIC)"
               exit 1
@@ -226,7 +226,12 @@ jobs:
 
       - name: Generate checksum
         if: env.ARCHIVE != ''
-        run: sha256sum "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
+        run: |
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
+          else
+            shasum -a 256 "${{ env.ARCHIVE }}" > "${{ env.ARCHIVE }}.sha256"
+          fi
 
       - name: Upload artifact
         if: env.ARCHIVE != ''
