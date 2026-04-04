@@ -48,33 +48,33 @@ jobs:
           mkdir -p .zig-cache
           SIG_VER=$(grep -oE 'sig_version_string = "[^"]+"' build.sig | grep -oE '"[^"]+"' | tr -d '"')
           GIT_SHORT=$(git rev-parse --short=7 HEAD)
-          cat > .zig-cache/build_options.zig <<'ZIGEOF'
-pub const mem_leak_frames: u32 = 0;
-pub const skip_non_native: bool = false;
-pub const have_llvm: bool = false;
-pub const llvm_has_m68k: bool = false;
-pub const llvm_has_csky: bool = false;
-pub const llvm_has_arc: bool = false;
-pub const llvm_has_xtensa: bool = false;
-pub const debug_gpa: bool = false;
-pub const enable_debug_extensions: bool = false;
-pub const enable_logging: bool = false;
-pub const enable_link_snapshots: bool = false;
-pub const enable_tracy: bool = false;
-pub const enable_tracy_callstack: bool = false;
-pub const enable_tracy_allocation: bool = false;
-pub const tracy_callstack_depth: u32 = 10;
-pub const value_tracing: bool = false;
-pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };
-pub const dev: @"src.dev.Env" = .full;
-pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };
-pub const io_mode: @"build.IoMode" = .threaded;
-pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };
-pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;
-ZIGEOF
-          echo "pub const version: [:0]const u8 = \"${SIG_VER}+zig0.16.0.${GIT_SHORT}\";" >> .zig-cache/build_options.zig
-          echo "pub const sig_version: [:0]const u8 = \"${SIG_VER}\";" >> .zig-cache/build_options.zig
-          echo 'pub const semver: @import("std").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = "dev", .build = "" };' >> .zig-cache/build_options.zig
+          OUT=.zig-cache/build_options.zig
+          printf 'pub const mem_leak_frames: u32 = 0;\n' > "$OUT"
+          printf 'pub const skip_non_native: bool = false;\n' >> "$OUT"
+          printf 'pub const have_llvm: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_m68k: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_csky: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_arc: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_xtensa: bool = false;\n' >> "$OUT"
+          printf 'pub const debug_gpa: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_debug_extensions: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_logging: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_link_snapshots: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_tracy: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_tracy_callstack: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_tracy_allocation: bool = false;\n' >> "$OUT"
+          printf 'pub const tracy_callstack_depth: u32 = 10;\n' >> "$OUT"
+          printf 'pub const value_tracing: bool = false;\n' >> "$OUT"
+          printf 'pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };\n' >> "$OUT"
+          printf 'pub const dev: @"src.dev.Env" = .full;\n' >> "$OUT"
+          printf 'pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };\n' >> "$OUT"
+          printf 'pub const io_mode: @"build.IoMode" = .threaded;\n' >> "$OUT"
+          printf 'pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };\n' >> "$OUT"
+          printf 'pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;\n' >> "$OUT"
+          printf "pub const version: [:0]const u8 = \"${SIG_VER}+zig0.16.0.${GIT_SHORT}\";\n" >> "$OUT"
+          printf "pub const sig_version: [:0]const u8 = \"${SIG_VER}\";\n" >> "$OUT"
+          printf 'pub const semver: @import("std").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = "dev", .build = "" };\n' >> "$OUT"
+          cat "$OUT"
 
       - name: Build x86_64-linux
         run: |
@@ -126,7 +126,6 @@ ZIGEOF
 
       - name: Download bootstrap sig (aarch64-macos from latest release)
         run: |
-          # Find the most recent aarch64-macos release binary
           DOWNLOAD_URL=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases" \
             | python3 -c "
           import sys, json
@@ -141,8 +140,7 @@ ZIGEOF
           echo "Using bootstrap: $DOWNLOAD_URL"
           mkdir -p /tmp/bootstrap-sig
           curl -fsSL "$DOWNLOAD_URL" -o /tmp/bootstrap-sig.tar
-          # Handle both .tar.xz and .tar.gz
-          if echo "$DOWNLOAD_URL" | grep -q '\.tar\.xz'; then
+          if echo "$DOWNLOAD_URL" | grep -q '.tar.xz'; then
             tar -xJf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
           else
             tar -xzf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
@@ -158,33 +156,33 @@ ZIGEOF
           mkdir -p .zig-cache
           SIG_VER=$(grep -oE 'sig_version_string = "[^"]+"' build.sig | grep -oE '"[^"]+"' | tr -d '"')
           GIT_SHORT=$(git rev-parse --short=7 HEAD)
-          cat > .zig-cache/build_options.zig <<'ZIGEOF'
-pub const mem_leak_frames: u32 = 0;
-pub const skip_non_native: bool = false;
-pub const have_llvm: bool = false;
-pub const llvm_has_m68k: bool = false;
-pub const llvm_has_csky: bool = false;
-pub const llvm_has_arc: bool = false;
-pub const llvm_has_xtensa: bool = false;
-pub const debug_gpa: bool = false;
-pub const enable_debug_extensions: bool = false;
-pub const enable_logging: bool = false;
-pub const enable_link_snapshots: bool = false;
-pub const enable_tracy: bool = false;
-pub const enable_tracy_callstack: bool = false;
-pub const enable_tracy_allocation: bool = false;
-pub const tracy_callstack_depth: u32 = 10;
-pub const value_tracing: bool = false;
-pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };
-pub const dev: @"src.dev.Env" = .full;
-pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };
-pub const io_mode: @"build.IoMode" = .threaded;
-pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };
-pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;
-ZIGEOF
-          echo "pub const version: [:0]const u8 = \"${SIG_VER}+zig0.16.0.${GIT_SHORT}\";" >> .zig-cache/build_options.zig
-          echo "pub const sig_version: [:0]const u8 = \"${SIG_VER}\";" >> .zig-cache/build_options.zig
-          echo 'pub const semver: @import("std").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = "dev", .build = "" };' >> .zig-cache/build_options.zig
+          OUT=.zig-cache/build_options.zig
+          printf 'pub const mem_leak_frames: u32 = 0;\n' > "$OUT"
+          printf 'pub const skip_non_native: bool = false;\n' >> "$OUT"
+          printf 'pub const have_llvm: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_m68k: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_csky: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_arc: bool = false;\n' >> "$OUT"
+          printf 'pub const llvm_has_xtensa: bool = false;\n' >> "$OUT"
+          printf 'pub const debug_gpa: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_debug_extensions: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_logging: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_link_snapshots: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_tracy: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_tracy_callstack: bool = false;\n' >> "$OUT"
+          printf 'pub const enable_tracy_allocation: bool = false;\n' >> "$OUT"
+          printf 'pub const tracy_callstack_depth: u32 = 10;\n' >> "$OUT"
+          printf 'pub const value_tracing: bool = false;\n' >> "$OUT"
+          printf 'pub const @"src.dev.Env" = enum (u4) { bootstrap = 0, core = 1, full = 2, c_source = 3, ast_gen = 4, sema = 5, @"aarch64-linux" = 6, cbe = 7, @"powerpc-linux" = 8, @"riscv64-linux" = 9, spirv = 10, wasm = 11, @"x86_64-linux" = 12 };\n' >> "$OUT"
+          printf 'pub const dev: @"src.dev.Env" = .full;\n' >> "$OUT"
+          printf 'pub const @"build.IoMode" = enum (u1) { threaded = 0, evented = 1 };\n' >> "$OUT"
+          printf 'pub const io_mode: @"build.IoMode" = .threaded;\n' >> "$OUT"
+          printf 'pub const @"build.ValueInterpretMode" = enum (u1) { direct = 0, by_name = 1 };\n' >> "$OUT"
+          printf 'pub const value_interpret_mode: @"build.ValueInterpretMode" = .direct;\n' >> "$OUT"
+          printf "pub const version: [:0]const u8 = \"${SIG_VER}+zig0.16.0.${GIT_SHORT}\";\n" >> "$OUT"
+          printf "pub const sig_version: [:0]const u8 = \"${SIG_VER}\";\n" >> "$OUT"
+          printf 'pub const semver: @import("std").SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0, .pre = "dev", .build = "" };\n' >> "$OUT"
+          cat "$OUT"
 
       - name: Build aarch64-macos
         run: |
