@@ -20,6 +20,8 @@ env:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    env:
+      BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-x86_64-linux.tar.gz
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,14 +34,15 @@ jobs:
           key: zig-cache-bootstrap-linux-${{ github.sha }}
           restore-keys: zig-cache-bootstrap-linux-
 
-      - name: Download zig 0.16.0 (one-time bootstrap tool)
+      - name: Download bootstrap sig
         run: |
-          curl -fsSL "https://ziglang.org/builds/zig-linux-x86_64-0.16.0.tar.xz" -o /tmp/zig.tar.xz
-          mkdir -p /tmp/zig-016
-          tar -xJf /tmp/zig.tar.xz -C /tmp/zig-016 --strip-components=1
-          echo "ZIG=/tmp/zig-016/zig" >> "$GITHUB_ENV"
+          mkdir -p /tmp/bootstrap-sig
+          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap-sig.tar
+          tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
+          chmod +x /tmp/bootstrap-sig/bin/sig
+          echo "/tmp/bootstrap-sig/bin" >> "$GITHUB_PATH"
+          /tmp/bootstrap-sig/bin/sig version
           echo "ZIG_LIB_DIR=$(pwd)/lib" >> "$GITHUB_ENV"
-          /tmp/zig-016/zig version
 
       - name: Generate build_options.zig
         run: |
@@ -82,7 +85,7 @@ jobs:
       - name: Build x86_64-linux
         run: |
           mkdir -p bootstrap-sig-x86_64-linux/bin
-          "$ZIG" build-exe \
+          sig build-exe \
             --dep build_options \
             --dep aro \
             -Mroot=src/main.zig \
@@ -118,6 +121,9 @@ jobs:
 
   build-macos:
     runs-on: macos-14
+    env:
+      # Real arm64 Mach-O bootstrap — uploaded from local Mac
+      BOOTSTRAP_URL: https://github.com/SB0LTD/sig/releases/download/bootstrap-sig-v2/bootstrap-sig-aarch64-macos.tar.gz
     steps:
       - uses: actions/checkout@v4
         with:
@@ -130,14 +136,15 @@ jobs:
           key: zig-cache-bootstrap-macos-${{ github.sha }}
           restore-keys: zig-cache-bootstrap-macos-
 
-      - name: Download zig 0.16.0 (one-time bootstrap tool)
+      - name: Download bootstrap sig
         run: |
-          curl -fsSL "https://ziglang.org/builds/zig-macos-aarch64-0.16.0.tar.xz" -o /tmp/zig.tar.xz
-          mkdir -p /tmp/zig-016
-          tar -xJf /tmp/zig.tar.xz -C /tmp/zig-016 --strip-components=1
-          echo "ZIG=/tmp/zig-016/zig" >> "$GITHUB_ENV"
+          mkdir -p /tmp/bootstrap-sig
+          curl -fsSL "$BOOTSTRAP_URL" -o /tmp/bootstrap-sig.tar
+          tar -xf /tmp/bootstrap-sig.tar -C /tmp/bootstrap-sig
+          chmod +x /tmp/bootstrap-sig/bin/sig
+          /tmp/bootstrap-sig/bin/sig version
+          echo "SIG_BIN=/tmp/bootstrap-sig/bin/sig" >> "$GITHUB_ENV"
           echo "ZIG_LIB_DIR=$(pwd)/lib" >> "$GITHUB_ENV"
-          /tmp/zig-016/zig version
 
       - name: Generate build_options.zig
         run: |
@@ -176,7 +183,7 @@ jobs:
       - name: Build aarch64-macos
         run: |
           mkdir -p bootstrap-sig-aarch64-macos/bin
-          "$ZIG" build-exe \
+          "$SIG_BIN" build-exe \
             --dep build_options \
             --dep aro \
             -Mroot=src/main.zig \
