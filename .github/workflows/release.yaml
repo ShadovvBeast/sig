@@ -36,7 +36,7 @@ jobs:
           - target: aarch64-macos
             zig_target: aarch64-macos
             ext: tar.xz
-            runner: ubuntu-latest
+            runner: macos-latest
           - target: x86_64-windows
             zig_target: x86_64-windows
             ext: zip
@@ -114,7 +114,11 @@ jobs:
           mkdir -p "${OUT}/bin"
           BIN="sig"; [ "${{ matrix.target }}" = "x86_64-windows" ] && BIN="sig.exe"
           CROSS_ARGS=""
-          [ "${{ matrix.target }}" != "x86_64-windows" ] && CROSS_ARGS="-target ${{ matrix.zig_target }}"
+          # Only cross-compile for Linux targets (built on ubuntu but targeting musl)
+          # Windows and macOS build natively on their respective runners
+          case "${{ matrix.target }}" in
+            x86_64-linux|aarch64-linux) CROSS_ARGS="-target ${{ matrix.zig_target }}" ;;
+          esac
           zig build-exe \
             --dep build_options --dep aro \
             -Mroot=src/main.zig \
