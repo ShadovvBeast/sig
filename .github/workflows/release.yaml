@@ -71,7 +71,7 @@ jobs:
           export PATH="/tmp/llvm-21/bin:$PATH"
           mv build.sig build.sig.bak
           mkdir -p build && cd build
-          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="/tmp/llvm-21" -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap" -DZIG_USE_LLVM_CONFIG=ON
+          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="/tmp/llvm-21" -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap" -DZIG_USE_LLVM_CONFIG=ON -DCMAKE_C_FLAGS="-march=x86-64" -DCMAKE_CXX_FLAGS="-march=x86-64"
           ninja install -j$(getconf _NPROCESSORS_ONLN)
           cd .. && mv build.sig.bak build.sig
           ./bootstrap/bin/sig version
