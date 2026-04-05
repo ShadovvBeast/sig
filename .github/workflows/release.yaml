@@ -163,7 +163,7 @@ jobs:
           pub const value_tracing = false;
           pub const skip_non_native = false;
           pub const debug_gpa = false;
-          pub const dev = .core;
+          pub const dev = .full;
           pub const io_mode: enum { threaded, evented } = .threaded;
           pub const value_interpret_mode = .direct;
           pub const sig_version: [:0]const u8 = "0.1.0-dev";
