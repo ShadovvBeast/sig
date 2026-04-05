@@ -1,4 +1,4 @@
-# [sig] Release pipeline — cmake bootstrap + cross-compile + native Windows
+# [sig] Release pipeline — stock zig cross-compile for all targets
 name: release
 
 on:
@@ -19,12 +19,29 @@ on:
 permissions:
   contents: write
 
-env:
-  LLVM_URL: https://github.com/SB0LTD/sig/releases/download/llvm-21/llvm-21-x86_64-linux.tar.xz
-
 jobs:
-  bootstrap:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-linux
+            zig_target: x86_64-linux-musl
+            ext: tar.xz
+            runner: ubuntu-latest
+          - target: aarch64-linux
+            zig_target: aarch64-linux-musl
+            ext: tar.xz
+            runner: ubuntu-latest
+          - target: aarch64-macos
+            zig_target: aarch64-macos
+            ext: tar.xz
+            runner: ubuntu-latest
+          - target: x86_64-windows
+            zig_target: x86_64-windows
+            ext: zip
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -34,6 +51,7 @@ jobs:
 
       - name: Resolve version
         id: version
+        shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             SIG_VER="${{ inputs.version }}"
@@ -49,74 +67,12 @@ jobs:
           ZIG_PATCH=$(sed -n 's/.*zig_version.*patch = \([0-9]*\).*/\1/p' build.sig | head -1)
           VERSION="${SIG_VER}+zig${ZIG_MAJOR}.${ZIG_MINOR}.${ZIG_PATCH}.$(git rev-parse --short=7 HEAD)"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
-      - name: Cache LLVM
-        uses: actions/cache@v4
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
         with:
-          path: /tmp/llvm-21
-          key: llvm-21-x86_64-linux-v1
-
-      - name: Install build deps
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build zlib1g-dev libzstd-dev
-
-      - name: Download LLVM 21
-        run: |
-          if [ ! -d /tmp/llvm-21 ]; then
-            curl -fsSL "$LLVM_URL" -o /tmp/llvm.tar.xz
-            tar -xJf /tmp/llvm.tar.xz -C /tmp
-          fi
-
-      - name: Build bootstrap via cmake
-        run: |
-          export PATH="/tmp/llvm-21/bin:$PATH"
-          mv build.sig build.sig.bak
-          mkdir -p build && cd build
-          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="/tmp/llvm-21" -DCMAKE_INSTALL_PREFIX="$PWD/../bootstrap" -DZIG_USE_LLVM_CONFIG=ON -DCMAKE_C_FLAGS="-march=x86-64" -DCMAKE_CXX_FLAGS="-march=x86-64"
-          ninja install -j$(getconf _NPROCESSORS_ONLN)
-          cd .. && mv build.sig.bak build.sig
-          ./bootstrap/bin/sig version
-        timeout-minutes: 60
-
-      - name: Upload bootstrap
-        uses: actions/upload-artifact@v4
-        with:
-          name: bootstrap-sig
-          path: bootstrap/
-          retention-days: 1
-
-  build:
-    needs: bootstrap
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-linux
-            zig_target: x86_64-linux-musl
-            ext: tar.xz
-            runner: ubuntu-latest
-            use_bootstrap: true
-          - target: aarch64-linux
-            zig_target: aarch64-linux-musl
-            ext: tar.xz
-            runner: ubuntu-latest
-            use_bootstrap: true
-          - target: aarch64-macos
-            zig_target: aarch64-macos
-            ext: tar.xz
-            runner: ubuntu-latest
-            use_bootstrap: true
-          - target: x86_64-windows
-            zig_target: x86_64-windows
-            ext: zip
-            runner: windows-latest
-            use_bootstrap: false
-    runs-on: ${{ matrix.runner }}
-    env:
-      VERSION: ${{ needs.bootstrap.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+          version: master
 
       - name: Cache zig-cache
         uses: actions/cache@v4
@@ -124,25 +80,6 @@ jobs:
           path: .zig-cache
           key: zig-cache-${{ matrix.target }}-${{ github.sha }}
           restore-keys: zig-cache-${{ matrix.target }}-
-
-      - name: Download bootstrap
-        if: matrix.use_bootstrap
-        uses: actions/download-artifact@v4
-        with:
-          name: bootstrap-sig
-          path: /tmp/bootstrap
-
-      - name: Setup bootstrap
-        if: matrix.use_bootstrap
-        run: |
-          chmod +x /tmp/bootstrap/bin/sig
-          echo "/tmp/bootstrap/bin" >> "$GITHUB_PATH"
-
-      - name: Setup Zig (Windows native)
-        if: "!matrix.use_bootstrap"
-        uses: mlugg/setup-zig@v2
-        with:
-          version: master
 
       - name: Write build_options.zig
         shell: bash
@@ -176,10 +113,9 @@ jobs:
           OUT="sig-${VERSION}-${{ matrix.target }}"
           mkdir -p "${OUT}/bin"
           BIN="sig"; [ "${{ matrix.target }}" = "x86_64-windows" ] && BIN="sig.exe"
-          COMPILER="sig"; [ "${{ matrix.use_bootstrap }}" = "false" ] && COMPILER="zig"
-          EXTRA_ARGS=""
-          [ "${{ matrix.use_bootstrap }}" = "true" ] && EXTRA_ARGS="-target ${{ matrix.zig_target }} -j$(getconf _NPROCESSORS_ONLN)"
-          ${COMPILER} build-exe \
+          CROSS_ARGS=""
+          [ "${{ matrix.target }}" != "x86_64-windows" ] && CROSS_ARGS="-target ${{ matrix.zig_target }}"
+          zig build-exe \
             --dep build_options --dep aro \
             -Mroot=src/main.zig \
             -Mbuild_options=.zig-cache/build_options.zig \
@@ -188,7 +124,7 @@ jobs:
             -femit-bin="${OUT}/bin/${BIN}" \
             --cache-dir .zig-cache \
             --zig-lib-dir lib \
-            ${EXTRA_ARGS}
+            ${CROSS_ARGS}
           ls -la "${OUT}/bin/"
         timeout-minutes: 120
 
@@ -240,11 +176,11 @@ jobs:
             ${{ env.ARCHIVE }}.sha256
 
   release:
-    needs: [bootstrap, build]
+    needs: build
     if: always() && needs.build.result != 'cancelled'
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.bootstrap.outputs.version }}
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - name: Download artifacts
@@ -263,17 +199,7 @@ jobs:
           ARCHIVES=""
           for f in sig-*.tar.xz sig-*.zip; do [ -f "$f" ] && ARCHIVES="$ARCHIVES $f"; done
           [ -z "$ARCHIVES" ] && echo "No archives" && exit 1
-          # Delete existing release with same tag if present
           gh release delete "sig-${VERSION}" --yes 2>/dev/null || true
           gh release create "sig-${VERSION}" --title "Sig ${VERSION}" \
-            --notes "Sig ${VERSION}
-
-          | Platform | Archive |
-          |---|---|
-          | Linux x86_64 | \`sig-${VERSION}-x86_64-linux.tar.xz\` |
-          | Linux aarch64 | \`sig-${VERSION}-aarch64-linux.tar.xz\` |
-          | macOS aarch64 | \`sig-${VERSION}-aarch64-macos.tar.xz\` |
-          | Windows x86_64 | \`sig-${VERSION}-x86_64-windows.zip\` |
-
-          Checksums in sha256sums.txt." \
+            --notes "Sig ${VERSION}" \
             ${PRERELEASE} $ARCHIVES sha256sums.txt
