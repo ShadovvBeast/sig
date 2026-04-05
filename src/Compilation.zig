@@ -4901,7 +4901,7 @@ fn docsCopyModule(
     while (try walker.next(io)) |entry| {
         switch (entry.kind) {
             .file => {
-                if (!std.mem.endsWith(u8, entry.basename, ".zig")) continue;
+                if (!std.mem.endsWith(u8, entry.basename, ".zig") and !std.mem.endsWith(u8, entry.basename, ".sig")) continue;
                 if (std.mem.eql(u8, entry.basename, "test.zig")) continue;
                 if (std.mem.endsWith(u8, entry.basename, "_test.zig")) continue;
             },

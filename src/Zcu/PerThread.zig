@@ -2388,7 +2388,7 @@ pub fn discoverImport(
     const io = comp.io;
     const gpa = comp.gpa;
 
-    if (!mem.endsWith(u8, import_string, ".zig") and !mem.endsWith(u8, import_string, ".zon")) {
+    if (!mem.endsWith(u8, import_string, ".zig") and !mem.endsWith(u8, import_string, ".zon") and !mem.endsWith(u8, import_string, ".sig")) {
         return .module;
     }
 
@@ -2475,7 +2475,8 @@ pub fn doImport(
         }
     }
     if (!std.mem.endsWith(u8, import_string, ".zig") and
-        !std.mem.endsWith(u8, import_string, ".zon"))
+        !std.mem.endsWith(u8, import_string, ".zon") and
+        !std.mem.endsWith(u8, import_string, ".sig"))
     {
         return error.ModuleNotFound;
     }
